@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef1f4">
+<title>School Schedule</title>
+<style>
+:root{
+  --bg:#eef1f4; --card:#ffffff; --ink:#14213d; --hi:#ffd23f; --bar:#14213d; --hi-ink:#14161c; --warn:#c2410c;
+  --go:#0b8a74; --gold:#d99a00; --danger:#d62828; --on-warn:#ffffff; --on-danger:#ffffff; --scrim:#000000;
+  --rc:20px; --rm:10px; --rs:12px; --ringw:12;
+  --accent:var(--bar); --glow:var(--hi); --glow-now:var(--glow); --hype:0;
+  --line:color-mix(in srgb, var(--ink) 14%, var(--bg));
+  --muted:color-mix(in srgb, var(--ink) 62%, var(--bg));
+  --shadow:0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent), 0 14px 34px -18px color-mix(in srgb, var(--ink) 40%, transparent);
+  --font:ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+  accent-color:var(--bar);
+  scrollbar-color:color-mix(in srgb, var(--ink) 35%, var(--bg)) var(--bg);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#10151f; --card:#18202e; --ink:#e8ecf3; --hi:#ffd23f; --bar:#ffd23f; --warn:#ff8a4c; --go:#3ddbc0; --gold:#ffd23f; --danger:#ff6b6b; --on-warn:#14161c; --on-danger:#14161c; color-scheme:dark}
+}
+*{box-sizing:border-box}
+::selection{background:var(--hi); color:var(--hi-ink)}
+html{height:100%}
+body{
+  margin:0; min-height:100%; color:var(--ink); font-family:var(--font); line-height:1.4;
+  background-color:var(--bg);
+  background-image:radial-gradient(90% 460px at 50% 0, color-mix(in srgb, var(--glow) 22%, transparent), transparent);
+  background-repeat:no-repeat;
+  padding:max(18px,env(safe-area-inset-top,0px)) 18px max(30px,env(safe-area-inset-bottom,0px));
+}
+main{max-width:620px; margin:0 auto}
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(90% 520px at 50% 0, color-mix(in srgb, var(--glow-now) 34%, transparent), transparent);
+  opacity:var(--hype); transition:opacity .8s;
+}
+:root[data-bg="flat"] body{background-image:none}
+:root[data-bg="gradient"] body{background-image:linear-gradient(160deg, color-mix(in srgb, var(--glow) 24%, var(--bg)), var(--bg) 55%, color-mix(in srgb, var(--bar) 14%, var(--bg)))}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--rc); box-shadow:var(--shadow)}
+
+.top{display:flex; justify-content:space-between; align-items:center; gap:12px}
+.top .l{display:flex; flex-direction:column; gap:6px; align-items:flex-start; min-width:0}
+.top .r{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; font-weight:600}
+#date{font-weight:700}
+.daterow{display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px}
+.dnum{color:var(--muted); font-weight:600; font-variant-numeric:tabular-nums}
+.pill{
+  display:inline-block; max-width:100%; padding:3px 12px; border-radius:99px; font-size:.82rem; font-weight:700;
+  background:var(--hi); color:var(--hi-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.pill[hidden]{display:none}
+.icon{
+  display:grid; place-items:center; width:42px; height:42px; padding:0; border-radius:var(--rs);
+  background:var(--card); color:var(--ink); border:1px solid var(--line); cursor:pointer; box-shadow:var(--shadow);
+}
+
+.banner{margin-top:16px; padding:14px 16px}
+.banner[hidden]{display:none}
+.banner p{margin:0 0 10px; font-weight:600}
+
+.hero{margin-top:18px; padding:22px 16px 20px; text-align:center; position:relative; overflow:hidden; isolation:isolate; transition:border-color .4s}
+.hero::before{
+  content:""; position:absolute; inset:0 0 auto; height:75%; z-index:-1; pointer-events:none;
+  background:radial-gradient(70% 100% at 50% 0, color-mix(in srgb, var(--glow-now) 40%, transparent), transparent 72%);
+  opacity:calc(.25 + var(--hype) * .75); transition:opacity .6s;
+}
+.confetti{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:1}
+.confetti span{position:absolute; top:-16px; width:8px; height:14px; border-radius:2px; animation:fall 3s ease-in both}
+.now{font-size:clamp(1.4rem,5.5vw,1.9rem); font-weight:800; letter-spacing:-.01em}
+.ringwrap{position:relative; width:min(300px,76vw); aspect-ratio:1; margin:12px auto 4px}
+.ringwrap svg{width:100%; height:100%; display:block; overflow:visible}
+.trk{fill:none; stroke:var(--line); stroke-width:var(--ringw)}
+.prog{
+  fill:none; stroke:var(--accent); stroke-width:var(--ringw); stroke-linecap:round;
+  transition:stroke-dashoffset .5s linear, stroke .4s;
+  filter:drop-shadow(0 0 6px color-mix(in srgb, var(--glow-now) 70%, transparent));
+}
+.center{position:absolute; inset:0; display:grid; place-content:center; text-align:center; padding:0 18%}
+.count{
+  margin:0; font-size:clamp(2.6rem,13vw,3.8rem); font-weight:800; line-height:1;
+  font-variant-numeric:tabular-nums; letter-spacing:-.03em; transition:color .4s, transform .6s;
+  transform:scale(calc(1 + var(--hype) * .06));
+}
+.unit{margin:6px 0 0; color:var(--muted); font-size:.92rem; font-weight:600}
+.pct{margin:8px 0 0; font-weight:700; font-size:.95rem; font-variant-numeric:tabular-nums}
+.sub{margin:6px 0 0; color:var(--muted)}
+.det{margin:4px 0 0; font-weight:700}
+.pct:empty,.det:empty,.next:empty{display:none}
+.next{margin:6px 0 0; color:var(--muted); font-size:.92rem}
+.notetxt{margin:6px 0 0; font-weight:700; font-size:1.05rem; overflow-wrap:anywhere}
+.notetxt.muted{color:var(--muted); font-weight:500}
+.badge{
+  display:inline-block; margin:12px 0 0; padding:5px 16px; border-radius:99px; font-weight:800;
+  background:var(--hi); color:var(--hi-ink);
+}
+.badge[hidden]{display:none}
+.badge[data-kind="warn"]{background:var(--warn); color:var(--on-warn); animation:pulse 1.6s ease-in-out infinite}
+.badge[data-kind="danger"]{background:var(--danger); color:var(--on-danger); animation:pulse .7s ease-in-out infinite}
+
+/* Situational looks: the page sets data-tone and data-level on the root element */
+:root[data-tone="go"]{--accent:var(--go)}
+:root[data-tone="warn"]{--accent:var(--warn); --glow-now:var(--warn)}
+:root[data-tone="danger"]{--accent:var(--danger); --glow-now:var(--danger)}
+:root[data-tone="gold"]{--accent:var(--gold)}
+:root[data-tone="off"]{--accent:var(--muted)}
+:root[data-tone="go"] .count,:root[data-tone="warn"] .count,:root[data-tone="danger"] .count{color:var(--accent)}
+:root[data-level="danger"] .hero{border-color:var(--danger)}
+:root[data-level="danger"] .center{animation:beat .8s ease-in-out infinite}
+:root[data-level="danger"] .prog{animation:ringpulse .8s ease-in-out infinite}
+:root[data-level="warn"] .center{animation:beat 1.8s ease-in-out infinite}
+.hero.flash{animation:flash 1.2s ease-out 2}
+@keyframes pulse{50%{opacity:.6}}
+@keyframes beat{50%{transform:scale(1.06)}}
+@keyframes ringpulse{50%{opacity:.5; filter:drop-shadow(0 0 16px var(--glow-now))}}
+@keyframes flash{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--glow-now) 75%, transparent)}
+  100%{box-shadow:0 0 0 26px transparent}
+}
+@keyframes fall{
+  0%{transform:translate3d(0,0,0) rotate(0); opacity:1}
+  100%{transform:translate3d(var(--dx,0),560px,0) rotate(var(--rot,0)); opacity:0}
+}
+
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 0}
+:root[data-note="off"] .stats{grid-template-columns:1fr}
+:root[data-note="off"] #noteCard{display:none}
+:root[data-pct="off"] .pct{display:none}
+:root[data-numdate="off"] .dnum{display:none}
+.stat{padding:16px 16px 14px}
+.stat b{display:block; font-size:1.45rem; line-height:1.2; font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted); font-size:.9rem}
+.stat .pct,.stat .det{font-size:.92rem}
+.stat[data-final="1"]{border-color:var(--hi); box-shadow:0 0 0 2px color-mix(in srgb, var(--hi) 35%, transparent), var(--shadow)}
+.stat[data-final="2"]{border-color:var(--warn); box-shadow:0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent), var(--shadow)}
+
+h2{font-size:1.1rem; margin:28px 4px 10px}
+ol{list-style:none; margin:0; padding:6px; overflow:hidden}
+li{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:var(--rs)}
+li .nm{display:block}
+li .dt{display:block; color:var(--muted); font-size:.88rem; font-weight:500}
+li .t{color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+li.done{opacity:.45}
+li.cur{background:var(--hi); color:var(--hi-ink); font-weight:700; opacity:1}
+li.cur .t,li.cur .dt{color:var(--hi-ink)}
+li.empty{color:var(--muted); justify-content:center}
+li.pass{padding:7px 14px; font-size:.88rem; color:var(--muted); font-weight:500}
+li.pass.cur{background:color-mix(in srgb, var(--hi) 55%, var(--card)); color:var(--hi-ink); font-weight:700}
+li.pass.cur .t{color:var(--hi-ink)}
+
+/* Settings */
+dialog{
+  width:min(580px,calc(100% - 20px)); max-height:90vh; padding:0; overflow:auto;
+  border:1px solid var(--line); border-radius:var(--rc); background:var(--card); color:var(--ink); font-family:var(--font);
+}
+dialog::backdrop{background:color-mix(in srgb, var(--scrim, #000) 62%, transparent)}
+.dhead{
+  position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center;
+  padding:14px 18px; background:var(--card); border-bottom:1px solid var(--line);
+}
+.dhead h2{margin:0; font-size:1.25rem}
+.dbody{padding:4px 18px 20px}
+.dbody h3{margin:0; padding-top:18px; font-size:1.1rem}
+.dbody > h3:not(:first-child){margin-top:24px; border-top:1px solid var(--line)}
+.hint{color:var(--muted); font-size:.9rem; margin:4px 0 10px}
+.label{font-weight:700; font-size:.92rem; margin:16px 0 6px}
+input[type=text],input[type=time],input[type=number],select{
+  font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+  border-radius:var(--rm); padding:9px 11px; min-width:0;
+}
+input[type=number]{width:96px}
+.field{display:block}
+.field input{width:100%; margin-top:6px}
+#linkOut{width:100%; margin-top:10px}
+.prow{
+  display:grid; gap:8px; margin-bottom:12px;
+  grid-template-columns:1fr auto auto auto; grid-template-areas:"n s e x" "t r r r" "o o o o";
+}
+.prow.pass{grid-template-areas:"n s e x" "o o o o"; padding:10px; border-radius:var(--rs); background:color-mix(in srgb, var(--ink) 6%, var(--card))}
+.prow.pass .f-t,.prow.pass .f-r{display:none}
+.f-n{grid-area:n}.f-s{grid-area:s}.f-e{grid-area:e}.f-x{grid-area:x}.f-t{grid-area:t}.f-r{grid-area:r}.f-o{grid-area:o}
+@media (max-width:480px){
+  .prow{grid-template-columns:1fr 1fr auto; grid-template-areas:"n n n" "s e x" "t r r" "o o o"}
+  .prow.pass{grid-template-areas:"n n n" "s e x" "o o o"}
+}
+button{
+  font:inherit; font-weight:700; padding:9px 14px; border-radius:var(--rm); cursor:pointer;
+  border:1px solid var(--ink); background:var(--ink); color:var(--bg);
+}
+button.alt,button.x{background:transparent; color:var(--ink); border-color:var(--line)}
+button.x{padding:8px 12px}
+button:disabled{opacity:.4; cursor:not-allowed}
+button.danger{background:var(--danger); border-color:var(--danger); color:var(--on-danger)}
+.btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+.err{color:var(--danger); font-weight:600; margin:4px 0 6px; min-height:1.2em}
+.tabs{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 6px}
+.days{display:flex; flex-wrap:wrap; gap:8px}
+.day{display:flex; align-items:center; gap:6px; padding:7px 11px; border:1px solid var(--line); border-radius:var(--rm); cursor:pointer}
+#presets{display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:8px; margin-top:10px}
+.sw,.tab[aria-pressed]{background:var(--bg); color:var(--ink); border-color:var(--line)}
+.sw{display:flex; align-items:center; gap:8px; font-weight:600}
+.tab{font-weight:700}
+.sw[aria-pressed="true"]{border-color:var(--hi); box-shadow:0 0 0 2px var(--hi)}
+.chip{width:26px; height:18px; border-radius:5px; border:1px solid var(--line); flex:none}
+.pickers{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:14px}
+.pick{display:flex; align-items:center; justify-content:space-between; gap:8px}
+input[type=color]{width:44px; height:34px; padding:0; border:1px solid var(--line); border-radius:var(--rm); background:none; cursor:pointer}
+.opts{display:grid; gap:10px; margin-top:10px}
+.opt{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.today{margin-top:18px; padding-top:4px; border-top:1px dashed var(--line); display:grid; gap:10px}
+.today .label{margin:12px 0 0}
+.foot{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:26px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--hi); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="l">
+      <span class="daterow"><span id="date"></span><span class="dnum" id="dnum"></span></span>
+      <span class="pill" id="pill" hidden></span>
+    </div>
+    <span class="r">
+      <span id="clock"></span>
+      <button class="icon" id="gear" type="button" aria-label="Open settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </span>
+  </div>
+
+  <div class="card banner" id="banner" hidden>
+    <p id="bannerTxt"></p>
+    <div class="btns">
+      <button id="bImport" type="button">Import</button>
+      <button class="alt" id="bDismiss" type="button">Not now</button>
+    </div>
+  </div>
+
+  <section class="card hero" id="hero">
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div class="now" id="now">Loading…</div>
+    <div class="ringwrap">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="trk" cx="100" cy="100" r="88"/>
+        <circle class="prog" id="ring" cx="100" cy="100" r="88" transform="rotate(-90 100 100)" stroke-dasharray="552.92" stroke-dashoffset="552.92"/>
+      </svg>
+      <div class="center">
+        <p class="count" id="count">--:--</p>
+        <p class="unit" id="unit"></p>
+        <p class="pct" id="pct"></p>
+      </div>
+    </div>
+    <p class="sub" id="sub"></p>
+    <p class="det" id="det"></p>
+    <p class="next" id="nextLine"></p>
+    <p class="badge" id="badge" hidden></p>
+  </section>
+
+  <div class="stats">
+    <div class="card stat" id="statLeft"><b id="schoolLeft">--</b><span>left in the school day</span>
+      <p class="pct" id="schoolPct"></p></div>
+    <div class="card stat" id="noteCard"><span>Note</span>
+      <p class="notetxt" id="noteTxt"></p></div>
+  </div>
+
+  <h2>Today’s schedule</h2>
+  <ol class="card" id="list"></ol>
+</main>
+
+<dialog id="dlg" aria-labelledby="dtitle">
+  <div class="dhead">
+    <h2 id="dtitle">Settings</h2>
+    <button class="alt" id="close" type="button">Done</button>
+  </div>
+  <div class="dbody">
+    <h3>Schedules</h3>
+    <p class="hint">Make one schedule for each kind of day (regular, block day, early release), then choose which days each one runs.</p>
+    <div class="tabs" id="tabs"></div>
+    <label class="field"><span class="label">Schedule name</span><input type="text" id="sname" maxlength="40"></label>
+    <p class="label">Runs on</p>
+    <div class="days" id="days"></div>
+    <p class="hint" id="dayhint"></p>
+    <label class="opt" style="margin-top:14px">Passing time between classes (minutes) <input type="number" id="passMin" min="0" max="30" step="1"></label>
+    <p class="hint">Default length for new passing periods. “Add class” also adds one before the new class. Passing periods are their own entries, so each can have its own times and note.</p>
+    <p class="label">Classes and passing periods</p>
+    <div id="rows"></div>
+    <p class="err" id="err"></p>
+    <div class="btns">
+      <button class="alt" id="addRow" type="button">Add class</button>
+      <button class="alt" id="addPass" type="button">Add passing period</button>
+      <button class="alt" id="fillGaps" type="button">Turn gaps into passing periods</button>
+      <button class="alt" id="del" type="button">Delete this schedule</button>
+    </div>
+    <p class="hint" id="gapMsg"></p>
+
+    <div class="today">
+      <p class="label">Today only</p>
+      <label class="opt">Use this schedule <select id="today"></select></label>
+      <label class="opt">Shift all periods (minutes, + is later) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
+      <label class="opt">End school early at <input type="time" id="endAt"></label>
+      <p class="hint">Late start? Enter the delay in minutes. Early release? Set the time school ends. These reset tomorrow.</p>
+      <div class="btns"><button class="alt" id="clearToday" type="button">Clear today’s changes</button></div>
+    </div>
+
+    <h3>Theme</h3>
+    <div id="presets"></div>
+    <div class="pickers" id="pickers"></div>
+    <p class="label">Make it yours</p>
+    <div class="opts">
+      <label class="opt">Auto uses, in light mode <select id="autoL"></select></label>
+      <label class="opt">Auto uses, in dark mode <select id="autoD"></select></label>
+      <label class="opt">Font
+        <select id="font"><option value="rounded">Rounded</option><option value="clean">Clean</option><option value="serif">Serif</option><option value="mono">Mono</option></select></label>
+      <label class="opt">Corners
+        <select id="corners"><option value="sharp">Sharp</option><option value="normal">Normal</option><option value="round">Round</option></select></label>
+      <label class="opt">Ring thickness
+        <select id="ringw"><option value="thin">Thin</option><option value="normal">Normal</option><option value="thick">Thick</option></select></label>
+      <label class="opt">Background
+        <select id="bgstyle"><option value="glow">Soft glow</option><option value="flat">Flat</option><option value="gradient">Gradient</option></select></label>
+    </div>
+
+    <h3>Display</h3>
+    <div class="opts">
+      <label class="opt">Time format
+        <select id="fmt"><option value="12">12-hour</option><option value="24">24-hour</option></select></label>
+      <label class="opt">Text size
+        <select id="size"><option value="small">Small</option><option value="normal">Normal</option><option value="large">Large</option></select></label>
+      <label class="opt">Show seconds on the clock <input type="checkbox" id="secs"></label>
+      <label class="opt">Show passing periods in the schedule <input type="checkbox" id="showPass"></label>
+      <label class="opt">Special effects (colors, pulsing, hype near the end) <input type="checkbox" id="fx"></label>
+      <label class="opt">Show the note box <input type="checkbox" id="shNote"></label>
+      <label class="opt">Show percentages <input type="checkbox" id="shPct"></label>
+      <label class="opt">Show the numeric date (like 10/27/2026) <input type="checkbox" id="shNum"></label>
+    </div>
+
+    <h3>Heads-up before the bell</h3>
+    <div class="opts">
+      <label class="opt">Warn me before class ends <input type="checkbox" id="alOn"></label>
+      <label class="opt">How early
+        <select id="alMins"><option value="1">1 minute</option><option value="2">2 minutes</option><option value="3">3 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option></select></label>
+      <label class="opt">Play a sound (also at the bell) <input type="checkbox" id="alSound"></label>
+    </div>
+    <div class="btns"><button class="alt" id="alTest" type="button">Test sound</button></div>
+    <p class="hint">The ring turns orange and flashes. Browsers only allow sound after you’ve tapped the page once, and the page has to stay open.</p>
+
+    <h3>Share and sync</h3>
+    <p class="hint">Copy a link that carries your schedules, then open it on another device (or send it to a friend) to load them there.</p>
+    <label class="opt">Include theme, display and heads-up settings <input type="checkbox" id="shareAll" checked></label>
+    <div class="btns"><button class="alt" id="mkLink" type="button">Copy share link</button></div>
+    <input type="text" id="linkOut" readonly hidden aria-label="Share link">
+    <label class="field"><span class="label">Import from a link or code</span><input type="text" id="importIn" placeholder="Paste a share link here" autocomplete="off"></label>
+    <div class="btns"><button class="alt" id="doImport" type="button">Import</button></div>
+    <p class="hint" id="shareMsg"></p>
+
+    <div class="foot">
+      <button class="alt" id="reset" type="button">Reset everything</button>
+      <button id="done2" type="button">Done</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+// ---- Defaults. Everything here can also be changed from the settings menu. ----
+const DEFAULTS = {
+  schedules: [{
+    id: "s1", name: "Regular day", days: [1, 2, 3, 4, 5],   // 0 = Sunday ... 6 = Saturday
+    passing: 5,                                              // minutes between classes, used when adding a period
+    periods: [
+      { name: "Period 1", start: "08:00", end: "08:50", teacher: "", room: "" },
+      { name: "Period 2", start: "08:55", end: "09:45", teacher: "", room: "" },
+      { name: "Period 3", start: "09:50", end: "10:40", teacher: "", room: "" },
+      { name: "Period 4", start: "10:45", end: "11:35", teacher: "", room: "" },
+      { name: "Lunch",    start: "11:35", end: "12:10", teacher: "", room: "" },
+      { name: "Period 5", start: "12:15", end: "13:05", teacher: "", room: "" },
+      { name: "Period 6", start: "13:10", end: "14:00", teacher: "", room: "" },
+      { name: "Period 7", start: "14:05", end: "14:55", teacher: "", room: "" }
+    ]
+  }],
+  editing: "s1",
+  override: null,   // { date, id }: use a different schedule for one day
+  adjust: null,     // { date, shift, endAt }: late start / early release for one day
+  theme: { preset: "auto", autoLight: "paper", autoDark: "midnight",
+           custom: { bg: "#eef1f4", card: "#ffffff", ink: "#14213d", hi: "#ffd23f", bar: "#14213d", warn: "#c2410c", go: "#0b8a74", gold: "#d99a00", danger: "#d62828", glow: "#ffd23f" } },
+  use24: false, seconds: true, size: "normal", showPassing: true, effects: true,
+  font: "rounded", corners: "normal", ring: "normal", bgStyle: "glow", showNote: true, showPercent: true, showNumDate: true,
+  alert: { on: true, mins: 5, sound: false }
+};
+const PRESETS = {
+  paper:     { label: "Paper", bg: "#eef1f4", card: "#ffffff", ink: "#14213d", hi: "#ffd23f", bar: "#14213d", warn: "#c2410c", go: "#0b8a74", gold: "#d99a00", danger: "#d62828", glow: "#ffd23f" },
+  midnight:  { label: "Midnight", bg: "#10151f", card: "#18202e", ink: "#e8ecf3", hi: "#ffd23f", bar: "#ffd23f", warn: "#ff8a4c", go: "#3ddbc0", gold: "#ffd23f", danger: "#ff6b6b", glow: "#ffd23f" },
+  forest:    { label: "Forest", bg: "#e9f0e6", card: "#f8fbf6", ink: "#1e3a2b", hi: "#9be564", bar: "#2f6b47", warn: "#c2410c", go: "#0e7490", gold: "#b7791f", danger: "#b91c1c", glow: "#9be564" },
+  sunset:    { label: "Sunset", bg: "#fff1e6", card: "#fffaf5", ink: "#4a1f2e", hi: "#ff8a5b", bar: "#b83a5a", warn: "#c2410c", go: "#0f766e", gold: "#b45309", danger: "#be123c", glow: "#ff8a5b" },
+  ocean:     { label: "Ocean", bg: "#e4f1f7", card: "#f6fbfd", ink: "#0b3a52", hi: "#5cc8f2", bar: "#0f6b94", warn: "#c2410c", go: "#0d9488", gold: "#ca8a04", danger: "#c92a2a", glow: "#5cc8f2" },
+  grape:     { label: "Grape", bg: "#1b1328", card: "#261a38", ink: "#efe6ff", hi: "#c792ff", bar: "#c792ff", warn: "#ffa94d", go: "#5eead4", gold: "#ffd866", danger: "#ff6b8b", glow: "#c792ff" },
+  ember:     { label: "Ember", bg: "#1a1210", card: "#261a16", ink: "#f6e9e1", hi: "#ff7a45", bar: "#ff7a45", warn: "#ffb347", go: "#4fd1c5", gold: "#ffd23f", danger: "#ff5252", glow: "#ff7a45" },
+  slate:     { label: "Slate", bg: "#1e2530", card: "#2a3441", ink: "#e6edf5", hi: "#7aa2f7", bar: "#7aa2f7", warn: "#f0a35e", go: "#4fd6be", gold: "#e5c07b", danger: "#f7768e", glow: "#7aa2f7" },
+  sand:      { label: "Sand", bg: "#f3ece0", card: "#fbf7ef", ink: "#3b2f22", hi: "#e3b04b", bar: "#8a5a2b", warn: "#b8470a", go: "#2f7d6d", gold: "#b8860b", danger: "#b3261e", glow: "#e3b04b" },
+  rose:      { label: "Rose", bg: "#fbeff2", card: "#fffafb", ink: "#4a1d2c", hi: "#f78fb3", bar: "#c2185b", warn: "#c2410c", go: "#00897b", gold: "#b7791f", danger: "#c62828", glow: "#f78fb3" },
+  neon:      { label: "Neon", bg: "#0b0b14", card: "#14142a", ink: "#eaeaff", hi: "#00f0ff", bar: "#00f0ff", warn: "#ffb800", go: "#39ff88", gold: "#fff200", danger: "#ff2e63", glow: "#00f0ff" },
+  terminal:  { label: "Terminal", bg: "#07110a", card: "#0d1b11", ink: "#c8ffd4", hi: "#39ff14", bar: "#39ff14", warn: "#ffb000", go: "#00e5ff", gold: "#f5e642", danger: "#ff4d4d", glow: "#39ff14" },
+  mono:      { label: "Mono", bg: "#ffffff", card: "#f2f2f2", ink: "#111111", hi: "#111111", bar: "#111111", warn: "#8a4b00", go: "#005f56", gold: "#6b5200", danger: "#b00020", glow: "#9a9a9a" },
+  candy:     { label: "Candy", bg: "#fdf0fa", card: "#ffffff", ink: "#3d1f4d", hi: "#ffb3e6", bar: "#7c3aed", warn: "#c2410c", go: "#0ea5a4", gold: "#b8860b", danger: "#dc2626", glow: "#ff9de0" },
+  coffee:    { label: "Coffee", bg: "#1c1410", card: "#2a1f19", ink: "#f1e4d6", hi: "#d6a56a", bar: "#d6a56a", warn: "#ff9f43", go: "#6fd6c4", gold: "#f2c14e", danger: "#ff6b5e", glow: "#d6a56a" },
+  arctic:    { label: "Arctic", bg: "#eaf4fb", card: "#ffffff", ink: "#12344d", hi: "#8fd3ff", bar: "#1d6fa5", warn: "#c2410c", go: "#0b9488", gold: "#c28a00", danger: "#c92a2a", glow: "#8fd3ff" }
+};
+const COLORS = [["bg", "Background"], ["card", "Cards"], ["ink", "Text"], ["hi", "Current class"], ["bar", "Progress ring"],
+  ["warn", "Heads-up"], ["go", "Passing time"], ["gold", "Last class and done"], ["danger", "Final minute"], ["glow", "Glow"]];
+const FONTS = {
+  rounded: { label: "Rounded", stack: 'ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif' },
+  clean:   { label: "Clean",   stack: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
+  serif:   { label: "Serif",   stack: '"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif' },
+  mono:    { label: "Mono",    stack: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' }
+};
+const CORNERS = { sharp: ["4px", "3px", "4px"], normal: ["20px", "10px", "12px"], round: ["30px", "18px", "20px"] };
+const RINGS = { thin: 8, normal: 12, thick: 18 };
+const BGS = ["glow", "flat", "gradient"];
+const SIZES = { small: "14px", normal: "16px", large: "19px" };
+const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ALERT_MINS = [1, 2, 3, 5, 10];
+const KEY = "schoolSchedule.v3";
+const RING = 552.92;
+
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o));
+const pad = n => String(n).padStart(2, "0");
+const mk = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; };
+const newId = () => "s" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+
+// ---- Schedule helpers ----
+const toSec = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 3600 + +m[2] * 60 : null; };
+const fromSec = s => pad(Math.floor(s / 3600) % 24) + ":" + pad(Math.floor(s % 3600 / 60));
+const roomTxt = r => /\d/.test(r) && /^\S{1,6}$/.test(r) ? "Room " + r : r;
+const detail = p => p ? [p.teacher, p.room ? roomTxt(p.room) : ""].filter(Boolean).join(", ") : "";
+const head = p => { const d = detail(p); return d ? "Head to " + d : ""; };
+
+function check(periods) {
+  const list = [];
+  for (const p of periods) {
+    const kind = p.kind === "passing" ? "passing" : "class";
+    const a = toSec(p.start), b = toSec(p.end), name = (p.name || "").trim() || (kind === "passing" ? "Passing time" : "Untitled");
+    if (a == null || b == null) return { ok: false, msg: "Set a start and end time for every period." };
+    if (b <= a) return { ok: false, msg: name + ": the end time must be after the start time." };
+    list.push({ name, start: a, end: b, teacher: (p.teacher || "").trim(), room: (p.room || "").trim(), note: (p.note || "").trim(), kind });
+  }
+  if (!list.length) return { ok: false, msg: "Add at least one class." };
+  if (!list.some(p => p.kind !== "passing")) return { ok: false, msg: "Add at least one class, not just passing periods." };
+  list.sort((x, y) => x.start - y.start);
+  for (let i = 1; i < list.length; i++)
+    if (list[i].start < list[i - 1].end) return { ok: false, msg: list[i - 1].name + " and " + list[i].name + " overlap." };
+  return { ok: true, list };
+}
+
+// Today-only changes: shift every period, and/or cut the day off at a set time
+function applyAdjust(list, d) {
+  const a = settings.adjust;
+  if (!a || a.date !== dayKey(d)) return { list, adjusted: false };
+  let out = list.map(p => ({ ...p, start: p.start + a.shift * 60, end: p.end + a.shift * 60 }));
+  const cut = toSec(a.endAt);
+  if (cut != null) out = out.filter(p => p.start < cut).map(p => ({ ...p, end: Math.min(p.end, cut) }));
+  return { list: out, adjusted: a.shift !== 0 || cut != null };
+}
+
+// ---- State ----
+function cleanSchedules(arr) {
+  if (!Array.isArray(arr)) return [];
+  const ids = new Set();
+  const list = arr.filter(x => x && Array.isArray(x.periods) && check(x.periods).ok).map(x => {
+    const id = typeof x.id === "string" && x.id && !ids.has(x.id) ? x.id : newId(); ids.add(id);
+    return {
+      id, name: String(x.name || "Schedule").slice(0, 40),
+      passing: Number.isInteger(x.passing) && x.passing >= 0 && x.passing <= 30 ? x.passing : 5,
+      days: (Array.isArray(x.days) ? x.days : []).filter(n => Number.isInteger(n) && n >= 0 && n <= 6),
+      periods: x.periods.map(p => ({
+        name: String(p.name || "").slice(0, 40), start: p.start, end: p.end,
+        teacher: String(p.teacher || "").slice(0, 40), room: String(p.room || "").slice(0, 20),
+        note: String(p.note || "").slice(0, 120), kind: p.kind === "passing" ? "passing" : "class"
+      })).sort((a, b) => (toSec(a.start) ?? 1e9) - (toSec(b.start) ?? 1e9))
+    };
+  });
+  const seen = new Set(); // a day can belong to only one schedule: first one wins
+  list.forEach(sc => { sc.days = sc.days.filter(d => !seen.has(d) && seen.add(d)); });
+  return list;
+}
+function sanitize(o) {
+  const s = clone(DEFAULTS);
+  const sch = cleanSchedules(o.schedules);
+  if (sch.length) s.schedules = sch;
+  if (o.theme) {
+    const t = o.theme.preset;
+    if (t === "auto" || t === "custom" || PRESETS[t]) s.theme.preset = t;
+    if (PRESETS[o.theme.autoLight]) s.theme.autoLight = o.theme.autoLight;
+    if (PRESETS[o.theme.autoDark]) s.theme.autoDark = o.theme.autoDark;
+    for (const [k] of COLORS) if (o.theme.custom && /^#[0-9a-f]{6}$/i.test(o.theme.custom[k])) s.theme.custom[k] = o.theme.custom[k].toLowerCase();
+  }
+  if (typeof o.use24 === "boolean") s.use24 = o.use24;
+  if (typeof o.seconds === "boolean") s.seconds = o.seconds;
+  if (typeof o.showPassing === "boolean") s.showPassing = o.showPassing;
+  if (typeof o.effects === "boolean") s.effects = o.effects;
+  if (FONTS[o.font]) s.font = o.font;
+  if (CORNERS[o.corners]) s.corners = o.corners;
+  if (RINGS[o.ring]) s.ring = o.ring;
+  if (BGS.includes(o.bgStyle)) s.bgStyle = o.bgStyle;
+  for (const k of ["showNote", "showPercent", "showNumDate"]) if (typeof o[k] === "boolean") s[k] = o[k];
+  if (SIZES[o.size]) s.size = o.size;
+  if (o.alert && typeof o.alert === "object") {
+    if (typeof o.alert.on === "boolean") s.alert.on = o.alert.on;
+    if (ALERT_MINS.includes(o.alert.mins)) s.alert.mins = o.alert.mins;
+    if (typeof o.alert.sound === "boolean") s.alert.sound = o.alert.sound;
+  }
+  s.editing = s.schedules.some(x => x.id === o.editing) ? o.editing : s.schedules[0].id;
+  if (o.override && typeof o.override.date === "string" && s.schedules.some(x => x.id === o.override.id)) s.override = { date: o.override.date, id: o.override.id };
+  if (o.adjust && typeof o.adjust.date === "string") {
+    let sh = Math.round(Number(o.adjust.shift)); if (!Number.isFinite(sh)) sh = 0;
+    sh = Math.max(-180, Math.min(300, sh));
+    const ea = toSec(o.adjust.endAt) != null ? o.adjust.endAt : "";
+    if (sh || ea) s.adjust = { date: o.adjust.date, shift: sh, endAt: ea };
+  }
+  return s;
+}
+function load() {
+  try {
+    let o = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!o) { // bring over a single schedule saved by an older version
+      const old = JSON.parse(localStorage.getItem("schoolSchedule.v2") || "null");
+      if (old && Array.isArray(old.periods) && check(old.periods).ok)
+        o = { schedules: [{ id: "s1", name: "Regular day", days: Array.isArray(old.days) ? old.days : [1, 2, 3, 4, 5], periods: old.periods }],
+              theme: old.theme, use24: old.use24, seconds: old.seconds, size: old.size };
+    }
+    if (o) return sanitize(o);
+  } catch (e) {}
+  return clone(DEFAULTS);
+}
+let settings = load();
+let lastKey = "";
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) {} };
+const ed = () => settings.schedules.find(s => s.id === settings.editing);
+const label = s => s.name || "Untitled";
+
+function activeSchedule(d) {
+  const o = settings.override;
+  if (o && o.date === dayKey(d)) {
+    const s = settings.schedules.find(x => x.id === o.id);
+    if (s) return { sc: s, forced: true };
+  }
+  return { sc: settings.schedules.find(x => x.days.includes(d.getDay())) || null, forced: false };
+}
+
+// ---- Theme ----
+function resolved() {
+  const t = settings.theme;
+  if (t.preset === "custom") return t.custom;
+  if (t.preset === "auto") return PRESETS[matchMedia("(prefers-color-scheme: dark)").matches ? t.autoDark : t.autoLight];
+  return PRESETS[t.preset];
+}
+function lum(hex) {
+  const c = [1, 3, 5].map(i => { const v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function autoChip() {
+  const L = PRESETS[settings.theme.autoLight], D = PRESETS[settings.theme.autoDark];
+  return "linear-gradient(90deg," + L.bg + " 25%," + L.hi + " 25% 50%," + D.bg + " 50% 75%," + D.hi + " 75%)";
+}
+function buildPresets() {
+  const box = $("presets"); box.textContent = "";
+  const items = [["auto", "Auto"], ...Object.keys(PRESETS).map(k => [k, PRESETS[k].label]), ["custom", "Custom"]];
+  for (const [k, name] of items) {
+    const c = k === "auto" ? null : k === "custom" ? settings.theme.custom : PRESETS[k];
+    const chip = mk("span", { className: "chip" });
+    chip.style.background = c
+      ? "linear-gradient(90deg," + c.bg + " 50%," + c.hi + " 50%)"
+      : autoChip();
+    const b = mk("button", { type: "button", className: "sw" }, chip, name);
+    b.setAttribute("aria-pressed", String(settings.theme.preset === k));
+    b.onclick = () => { settings.theme.preset = k; save(); applyTheme(); };
+    box.append(b);
+  }
+}
+// Text drawn on top of a palette color uses whichever palette color reads best on it
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function pickOn(color, c) { return [c.ink, c.card, c.bg].reduce((best, t) => ratio(color, t) > ratio(color, best) ? t : best); }
+function applyTheme() {
+  const c = resolved(), r = document.documentElement.style;
+  for (const [k] of COLORS) r.setProperty("--" + k, c[k]);
+  r.setProperty("--hi-ink", pickOn(c.hi, c));
+  r.setProperty("--on-warn", pickOn(c.warn, c));
+  r.setProperty("--on-danger", pickOn(c.danger, c));
+  r.setProperty("--scrim", lum(c.ink) < lum(c.bg) ? c.ink : c.bg);
+  r.colorScheme = lum(c.bg) < 0.3 ? "dark" : "light";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", c.bg);
+  buildPresets();
+  for (const [k] of COLORS) { const i = $("c_" + k); if (i && i.value !== c[k]) i.value = c[k]; }
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (settings.theme.preset === "auto") applyTheme(); });
+
+// ---- Display ----
+function applyLook() {
+  const root = document.documentElement, st = root.style;
+  st.fontSize = SIZES[settings.size];
+  st.setProperty("--font", FONTS[settings.font].stack);
+  const [rc, rm, rs] = CORNERS[settings.corners];
+  st.setProperty("--rc", rc); st.setProperty("--rm", rm); st.setProperty("--rs", rs);
+  st.setProperty("--ringw", RINGS[settings.ring]);
+  root.dataset.bg = settings.bgStyle;
+  root.dataset.note = settings.showNote ? "on" : "off";
+  root.dataset.pct = settings.showPercent ? "on" : "off";
+  root.dataset.numdate = settings.showNumDate ? "on" : "off";
+}
+function applyDisplay() {
+  applyLook();
+  lastKey = ""; tick();
+}
+function fmtClock(s) {
+  const h = Math.floor(s / 3600) % 24, m = Math.floor(s % 3600 / 60);
+  if (settings.use24) return pad(h) + ":" + pad(m);
+  return ((h + 11) % 12 + 1) + ":" + pad(m) + (h < 12 ? " AM" : " PM");
+}
+function fmtNow(d) {
+  const h = d.getHours(), m = pad(d.getMinutes()), s = settings.seconds ? ":" + pad(d.getSeconds()) : "";
+  return settings.use24 ? pad(h) + ":" + m + s : ((h + 11) % 12 + 1) + ":" + m + s + (h < 12 ? " AM" : " PM");
+}
+const countdown = s => {
+  s = Math.max(0, Math.ceil(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return h ? h + ":" + pad(m) + ":" + pad(sec) : pad(m) + ":" + pad(sec);
+};
+const words = s => {
+  s = Math.max(0, Math.round(s / 60));
+  const h = Math.floor(s / 60), m = s % 60;
+  return h ? h + " hr " + m + " min" : m + " min";
+};
+
+// ---- Sound + heads-up ----
+let ac = null;
+function audio() {
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {}
+  return ac;
+}
+function beep(times, freq) {
+  const c = audio(); if (!c) return;
+  let t = c.currentTime;
+  for (let i = 0; i < times; i++) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.3);
+    t += 0.38;
+  }
+}
+const bell = () => beep(3, 660);
+function flashHero() {
+  const h = $("hero");
+  h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash");
+}
+function fireAlert() { flashHero(); if (settings.alert.sound) beep(2, 880); }
+function confetti() {
+  const box = $("confetti"); box.textContent = "";
+  const cols = ["--hi", "--bar", "--warn", "--go", "--gold", "--danger", "--glow"];
+  for (let i = 0; i < 34; i++) {
+    const c = mk("span");
+    c.style.left = Math.random() * 100 + "%";
+    c.style.background = "var(" + cols[i % cols.length] + ")";
+    c.style.setProperty("--dx", (Math.random() * 120 - 60) + "px");
+    c.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
+    c.style.animationDelay = Math.random() * 0.8 + "s";
+    c.style.animationDuration = (2.4 + Math.random() * 1.6) + "s";
+    box.append(c);
+  }
+  setTimeout(() => { box.textContent = ""; }, 6000);
+}
+$("hero").addEventListener("animationend", e => { if (e.animationName === "flash") e.currentTarget.classList.remove("flash"); });
+// Browsers only let a page make sound after a tap, so unlock audio on the first one
+addEventListener("pointerdown", () => audio(), { once: true });
+addEventListener("keydown", () => audio(), { once: true });
+
+// ---- Main display ----
+function renderList(P, cur, now) {
+  const ol = $("list"); ol.textContent = "";
+  if (!P) { ol.append(mk("li", { className: "empty", textContent: "No schedule runs today. Pick days in settings." })); return; }
+  const span = (a, b) => fmtClock(a) + " – " + fmtClock(b);
+  P.forEach((p, i) => {
+    const prev = P[i - 1];
+    // a gap with no passing period entered still shows as passing time
+    if (settings.showPassing && prev && p.start > prev.end) {
+      const mins = Math.round((p.start - prev.end) / 60), isCur = now >= prev.end && now < p.start;
+      ol.append(mk("li", { className: "pass" + (isCur ? " cur" : now >= p.start ? " done" : "") },
+        mk("span", { textContent: "Passing time (" + mins + " min)" }),
+        mk("span", { className: "t", textContent: span(prev.end, p.start) })));
+    }
+    if (p.kind === "passing") {
+      if (!settings.showPassing) return;
+      ol.append(mk("li", { className: "pass" + (i === cur ? " cur" : now >= p.end ? " done" : "") },
+        mk("span", { textContent: p.name + " (" + Math.round((p.end - p.start) / 60) + " min)" }),
+        mk("span", { className: "t", textContent: span(p.start, p.end) })));
+      return;
+    }
+    const left = mk("span", {}, mk("span", { className: "nm", textContent: p.name }));
+    const d = detail(p);
+    if (d) left.append(mk("span", { className: "dt", textContent: d }));
+    ol.append(mk("li", { className: i === cur ? "cur" : now >= p.end ? "done" : "" },
+      left,
+      mk("span", { className: "t", textContent: span(p.start, p.end) })));
+  });
+}
+
+let watch = null, warnedFor = null, dangerFor = null, firstTick = true, prevMode = "";
+const clamp01 = x => Math.max(0, Math.min(1, x));
+function tick() {
+  const d = new Date();
+  const now = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+  $("date").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  $("dnum").textContent = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+  $("clock").textContent = fmtNow(d);
+
+  const { sc, forced } = activeSchedule(d);
+  const res = sc ? check(sc.periods) : null;
+  let P = res && res.ok ? res.list : null, adjusted = false;
+  if (P) { const r = applyAdjust(P, d); P = r.list.length ? r.list : null; adjusted = r.adjusted; }
+  const C = P ? P.filter(p => p.kind !== "passing") : [];   // classes only
+  if (!C.length) P = null;
+  const pill = $("pill");
+  pill.hidden = !(P && (settings.schedules.length > 1 || forced || adjusted));
+  if (P) {
+    const notes = [];
+    if (forced) notes.push("today only");
+    if (adjusted) notes.push("adjusted");
+    pill.textContent = label(sc) + (notes.length ? " (" + notes.join(", ") + ")" : "");
+  }
+
+  const fx = settings.effects;
+  let nowTxt, count, unit = "", sub, pct = 0, sLeft = "--", sPct = 0, cur = -1, key,
+      pctTxt = "", detTxt = "", nextLine = "", noteTxt = "", inClass = false,
+      mode = "off", tone = "", level = "", badge = "", badgeKind = "info", hype = 0, leftSec = -1, dk = "";
+
+  if (!P) {
+    nowTxt = "No school today"; count = "--:--"; sub = "Enjoy it."; key = "none";
+    if (fx) { tone = "off"; badge = "Day off"; }
+  } else {
+    const first = C[0], last = C[C.length - 1], dayLen = last.end - first.start;
+    cur = P.findIndex(p => now >= p.start && now < p.end);
+    const item = cur >= 0 ? P[cur] : null;
+    const nextClass = from => C.find(p => p.start >= from);
+    key = sc.id + "|" + cur + "|" + (now >= last.end) + "|" + (now < first.start) + "|" + adjusted;
+    if (now < first.start) {
+      mode = "before";
+      const lb = first.start - now;
+      nowTxt = "School hasn’t started"; count = countdown(lb); unit = "until first bell";
+      sub = first.name + " starts at " + fmtClock(first.start);
+      sLeft = words(dayLen); detTxt = head(first); noteTxt = first.note;
+      if (fx) {
+        tone = "dawn"; hype = clamp01(1 - lb / 300) * 0.6; dk = "before";
+        if (lb <= 60) { level = "danger"; badge = "First bell in under a minute"; badgeKind = "danger"; }
+        else if (lb <= 300) badge = "First bell soon";
+      }
+    } else if (now >= last.end) {
+      mode = "out";
+      nowTxt = "School’s out"; count = "00:00"; unit = "see you tomorrow"; sub = "The last bell rang at " + fmtClock(last.end);
+      sLeft = "0 min"; sPct = 100; pct = 100;
+      if (fx) { tone = "gold"; hype = 0.5; badge = "School’s out!"; }
+    } else {
+      leftSec = last.end - now;
+      sLeft = words(leftSec);
+      sPct = (now - first.start) / dayLen * 100;
+      const hS = fx ? clamp01(1 - leftSec / 3600) : 0;   // builds over the last hour of school
+      if (item && item.kind !== "passing") {
+        mode = "class"; inClass = true;
+        const p = item, nx = nextClass(p.end), left = p.end - now, id = sc.id + "|" + cur + "|" + dayKey(d);
+        const lastClass = !nx, warnNow = settings.alert.on && left <= settings.alert.mins * 60;
+        nowTxt = p.name; count = countdown(left); unit = "left in class";
+        sub = "Ends at " + fmtClock(p.end);
+        pct = (now - p.start) / (p.end - p.start) * 100;
+        pctTxt = Math.floor(pct) + "% through class";
+        detTxt = detail(p); noteTxt = p.note;
+        nextLine = nx ? "Next: " + nx.name + " at " + fmtClock(nx.start) + (detail(nx) ? " (" + detail(nx) + ")" : "") : "Last class of the day";
+        level = fx && left <= 60 ? "danger" : warnNow ? "warn" : "";
+        if (fx) { tone = lastClass ? "gold" : ""; hype = Math.max(clamp01(1 - left / 300) * 0.75, hS * (lastClass ? 1 : 0.85)); }
+        if (level === "danger") { badge = lastClass ? "Last minute of school!" : "Last minute!"; badgeKind = "danger"; }
+        else if (level === "warn") { badge = fx && lastClass ? "Almost free!" : "Class ends soon"; badgeKind = "warn"; }
+        else if (fx && lastClass) badge = "Last class of the day";
+        dk = id;
+        // bell for a class that just ended and flowed straight into the next one
+        if (watch && watch.id !== id && now >= watch.end && now - watch.end < 6 && settings.alert.sound) bell();
+        watch = { end: p.end, id };
+        if (warnNow && warnedFor !== id) { const quiet = firstTick; warnedFor = id; if (!quiet) fireAlert(); }
+      } else {
+        // a passing period you entered, or an unlisted gap between classes
+        mode = "passing";
+        const nx = nextClass(item ? item.end : now);
+        const leftP = (item ? item.end : nx.start) - now;
+        if (item) {
+          nowTxt = item.name; count = countdown(item.end - now);
+          unit = item.end === nx.start ? "until " + nx.name : "left in passing time";
+          pct = (now - item.start) / (item.end - item.start) * 100;
+          noteTxt = item.note || nx.note;
+        } else {
+          const prev = [...P].reverse().find(p => p.end <= now);
+          nowTxt = "Passing time"; count = countdown(nx.start - now); unit = "until " + nx.name;
+          pct = (now - prev.end) / (nx.start - prev.end) * 100;
+          noteTxt = nx.note;
+        }
+        sub = nx.name + " starts at " + fmtClock(nx.start);
+        detTxt = head(nx);
+        if (fx) {
+          tone = "go"; badge = "Head to class";
+          hype = Math.max(clamp01(1 - leftP / 120) * 0.9, hS * 0.85);
+          if (leftP <= 60) { level = "danger"; badge = "Hurry! Under a minute"; badgeKind = "danger"; }
+          dk = sc.id + "|pass|" + (item ? cur : "g" + nx.start);
+        }
+      }
+    }
+  }
+  if (level) tone = level;
+  if (level === "danger" && fx && dangerFor !== dk) { dangerFor = dk; if (!firstTick) flashHero(); }
+  // the bell: a class we were watching has just ended
+  if (!inClass && watch) {
+    if (now >= watch.end && now - watch.end < 6 && settings.alert.sound) bell();
+    watch = null;
+  }
+  // confetti when the last bell rings while the page is open
+  if (fx && mode === "out" && (prevMode === "class" || prevMode === "passing") && !matchMedia("(prefers-reduced-motion: reduce)").matches) confetti();
+  prevMode = mode;
+
+  const root = document.documentElement;
+  root.dataset.tone = tone; root.dataset.level = level;
+  root.style.setProperty("--hype", hype.toFixed(3));
+  $("hero").dataset.mode = mode;
+  const bd = $("badge"); bd.hidden = !badge; bd.textContent = badge; bd.dataset.kind = badgeKind;
+  $("statLeft").dataset.final = fx && leftSec >= 0 ? (leftSec <= 600 ? "2" : leftSec <= 3600 ? "1" : "") : "";
+
+  $("now").textContent = nowTxt;
+  $("count").textContent = count;
+  $("unit").textContent = unit;
+  $("pct").textContent = pctTxt;
+  $("sub").textContent = sub;
+  $("det").textContent = detTxt;
+  $("nextLine").textContent = nextLine;
+  $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  $("schoolLeft").textContent = sLeft;
+  $("schoolPct").textContent = P ? Math.floor(Math.min(100, sPct)) + "% through the day" : "";
+  const nt = $("noteTxt");
+  nt.textContent = noteTxt || "No note for this period.";
+  nt.classList.toggle("muted", !noteTxt);
+  const live = P && now >= C[0].start && now < C[C.length - 1].end;
+  document.title = live ? (level === "danger" ? "! " : "") + count + " · " + nowTxt : "School Schedule";
+
+  if (key !== lastKey) { renderList(P, cur, now); lastKey = key; }
+  firstTick = false;
+}
+
+// ---- Settings menu: schedules ----
+function buildTabs() {
+  const tabs = $("tabs"); tabs.textContent = "";
+  settings.schedules.forEach(s => {
+    const b = mk("button", { type: "button", className: "tab", textContent: label(s) });
+    b.setAttribute("aria-pressed", String(s.id === settings.editing));
+    b.onclick = () => { settings.editing = s.id; save(); buildSchedUI(); };
+    tabs.append(b);
+  });
+  const add = mk("button", { type: "button", className: "alt tab", textContent: "+ Add schedule" });
+  add.onclick = () => {
+    const n = { id: newId(), name: "Schedule " + (settings.schedules.length + 1), days: [], passing: ed().passing, periods: clone(ed().periods) };
+    settings.schedules.push(n); settings.editing = n.id; save();
+    buildSchedUI(); lastKey = ""; tick(); $("sname").select();
+  };
+  tabs.append(add);
+}
+function buildToday() {
+  const sel = $("today"); sel.textContent = "";
+  sel.append(mk("option", { value: "", textContent: "Automatic (by day)" }));
+  settings.schedules.forEach(s => sel.append(mk("option", { value: s.id, textContent: label(s) })));
+  const today = dayKey(new Date()), o = settings.override, a = settings.adjust;
+  sel.value = o && o.date === today ? o.id : "";
+  $("shift").value = a && a.date === today ? a.shift : 0;
+  $("endAt").value = a && a.date === today ? a.endAt : "";
+}
+function dayHint() {
+  const missing = DAYNAMES.filter((n, i) => !settings.schedules.some(s => s.days.includes(i)));
+  $("dayhint").textContent = "A day can only belong to one schedule. " +
+    (missing.length ? "No school on: " + missing.join(", ") + "." : "Every day has a schedule.");
+}
+function addRow(p) {
+  const kind = p.kind === "passing" ? "passing" : "class", pass = kind === "passing";
+  const n = mk("input", { type: "text", value: p.name, placeholder: pass ? "Passing time" : "Name", className: "f-n", maxLength: 40 });
+  const s = mk("input", { type: "time", value: p.start, className: "f-s" });
+  const e = mk("input", { type: "time", value: p.end, className: "f-e" });
+  const t = mk("input", { type: "text", value: p.teacher || "", placeholder: "Teacher (optional)", className: "f-t", maxLength: 40 });
+  const r = mk("input", { type: "text", value: p.room || "", placeholder: "Room (optional)", className: "f-r", maxLength: 20 });
+  const o = mk("input", { type: "text", value: p.note || "", placeholder: pass ? "Note (optional)" : "Note, e.g. “Welcome to school”", className: "f-o", maxLength: 120 });
+  n.setAttribute("aria-label", pass ? "Passing period name" : "Period name");
+  s.setAttribute("aria-label", "Start time");
+  e.setAttribute("aria-label", "End time");
+  t.setAttribute("aria-label", "Teacher");
+  r.setAttribute("aria-label", "Room");
+  o.setAttribute("aria-label", "Note shown in the note box");
+  const x = mk("button", { type: "button", className: "x f-x", textContent: "✕" });
+  x.setAttribute("aria-label", "Remove");
+  const row = mk("div", { className: "prow" + (pass ? " pass" : "") }, n, s, e, t, r, o, x);
+  row.dataset.kind = kind;
+  x.onclick = () => { row.remove(); commitRows(); };
+  $("rows").append(row);
+  return n;
+}
+function readRows() {
+  return [...$("rows").children].map(row => {
+    const [n, s, e, t, r, o] = row.querySelectorAll("input");
+    return { name: n.value, start: s.value, end: e.value, teacher: t.value, room: r.value, note: o.value, kind: row.dataset.kind || "class" };
+  });
+}
+function commitRows() {
+  const rows = readRows(), res = check(rows);
+  if (!res.ok) { $("err").textContent = res.msg; return; }
+  $("err").textContent = "";
+  ed().periods = byStart(rows); save(); lastKey = ""; tick();
+}
+const startKey = t => { const v = toSec(t); return v == null ? Infinity : v; };
+const byStart = rows => rows.map((r, i) => ({ r, i, k: startKey(r.start) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.r);
+// Reorder the rows on screen by start time (done when you leave a row, so rows don't jump while you type)
+function sortRows() {
+  const box = $("rows"), rows = [...box.children];
+  const sorted = rows.map((r, i) => ({ r, i, k: startKey(r.querySelectorAll("input")[1].value) }))
+    .sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.r);
+  if (sorted.every((r, i) => r === rows[i])) return false;
+  sorted.forEach(r => box.append(r));
+  return true;
+}
+function buildSchedUI() {
+  const sc = ed();
+  buildTabs();
+  $("sname").value = sc.name;
+  $("passMin").value = sc.passing;
+  const days = $("days"); days.textContent = "";
+  DAYNAMES.forEach((name, i) => {
+    const cb = mk("input", { type: "checkbox", checked: sc.days.includes(i) });
+    cb.onchange = () => {
+      if (cb.checked) { settings.schedules.forEach(s => { s.days = s.days.filter(x => x !== i); }); ed().days.push(i); }
+      else ed().days = ed().days.filter(x => x !== i);
+      save(); dayHint(); lastKey = ""; tick();
+    };
+    days.append(mk("label", { className: "day" }, cb, name));
+  });
+  dayHint();
+  $("rows").textContent = "";
+  sc.periods.forEach(addRow);
+  $("err").textContent = "";
+  $("del").disabled = settings.schedules.length < 2;
+  buildToday();
+}
+$("rows").addEventListener("input", commitRows);
+$("rows").addEventListener("focusout", e => {
+  const row = e.target.closest && e.target.closest(".prow");
+  if (row && !row.contains(e.relatedTarget) && sortRows()) commitRows();
+});
+$("sname").oninput = () => { ed().name = $("sname").value; save(); buildTabs(); buildToday(); lastKey = ""; tick(); };
+$("passMin").oninput = () => {
+  let v = Math.round(Number($("passMin").value)); if (!Number.isFinite(v)) v = 5;
+  ed().passing = Math.max(0, Math.min(30, v)); save();
+};
+$("today").onchange = e => {
+  settings.override = e.target.value ? { date: dayKey(new Date()), id: e.target.value } : null;
+  save(); lastKey = ""; tick();
+};
+function setAdjust() {
+  let sh = Math.round(Number($("shift").value)); if (!Number.isFinite(sh)) sh = 0;
+  sh = Math.max(-180, Math.min(300, sh));
+  const ea = toSec($("endAt").value) != null ? $("endAt").value : "";
+  settings.adjust = sh || ea ? { date: dayKey(new Date()), shift: sh, endAt: ea } : null;
+  save(); lastKey = ""; tick();
+}
+$("shift").oninput = setAdjust;
+$("endAt").oninput = setAdjust;
+$("clearToday").onclick = () => { settings.override = null; settings.adjust = null; save(); buildToday(); lastKey = ""; tick(); };
+const LAST_MIN = 23 * 3600 + 59 * 60;
+function endOfDay(rows) { // where the latest-ending entry stops, or null if the schedule is empty
+  const ends = rows.map(r => toSec(r.end)).filter(v => v != null);
+  return ends.length ? Math.max(...ends) : null;
+}
+$("addRow").onclick = () => {
+  const rows = readRows(), end = endOfDay(rows);
+  let s = end == null ? 8 * 3600 : end;
+  const lastRow = rows.filter(r => toSec(r.end) === end).pop(), gap = ed().passing;
+  if (end != null && gap > 0 && lastRow && lastRow.kind !== "passing") {
+    const pe = Math.min(s + gap * 60, LAST_MIN);
+    addRow({ name: "Passing time", start: fromSec(s), end: fromSec(pe), kind: "passing" });
+    s = pe;
+  }
+  s = Math.min(s, 22 * 3600);
+  const count = rows.filter(r => r.kind !== "passing").length;
+  const n = addRow({ name: "Period " + (count + 1), start: fromSec(s), end: fromSec(Math.min(s + 50 * 60, LAST_MIN)), teacher: "", room: "", note: "", kind: "class" });
+  sortRows(); n.focus();
+  $("gapMsg").textContent = "";
+  commitRows();
+};
+$("addPass").onclick = () => {
+  const end = endOfDay(readRows()), s = Math.min(end == null ? 8 * 3600 : end, 23 * 3600);
+  const n = addRow({ name: "Passing time", start: fromSec(s), end: fromSec(Math.min(s + (ed().passing || 5) * 60, LAST_MIN)), kind: "passing" });
+  sortRows(); n.focus();
+  $("gapMsg").textContent = "";
+  commitRows();
+};
+$("fillGaps").onclick = () => {
+  const res = check(readRows()), msg = $("gapMsg");
+  if (!res.ok) { msg.textContent = "Fix the problem above first: " + res.msg; return; }
+  let n = 0;
+  for (let i = 1; i < res.list.length; i++) {
+    const a = res.list[i - 1], b = res.list[i];
+    if (b.start > a.end) { addRow({ name: "Passing time", start: fromSec(a.end), end: fromSec(b.start), kind: "passing" }); n++; }
+  }
+  msg.textContent = n ? "Added " + n + " passing period" + (n === 1 ? "" : "s") + "." : "There are no gaps to fill.";
+  if (n) { sortRows(); commitRows(); }
+};
+
+// Two-tap confirmation (browser confirm() boxes can be blocked, which would make buttons do nothing)
+function arm(btn, confirmText, action) {
+  const orig = btn.textContent; let t = null;
+  btn.onclick = () => {
+    if (t) { clearTimeout(t); t = null; btn.textContent = orig; btn.classList.remove("danger"); action(); return; }
+    btn.textContent = confirmText; btn.classList.add("danger");
+    t = setTimeout(() => { t = null; btn.textContent = orig; btn.classList.remove("danger"); }, 3500);
+  };
+}
+arm($("del"), "Tap again to delete", () => {
+  const id = settings.editing;
+  settings.schedules = settings.schedules.filter(s => s.id !== id);
+  if (settings.override && settings.override.id === id) settings.override = null;
+  settings.editing = settings.schedules[0].id;
+  save(); buildSchedUI(); lastKey = ""; tick();
+});
+
+// ---- Settings menu: theme, display, heads-up ----
+function buildThemeUI() {
+  const pk = $("pickers"); pk.textContent = "";
+  for (const [k, name] of COLORS) {
+    const inp = mk("input", { type: "color", id: "c_" + k });
+    inp.setAttribute("aria-label", name + " color");
+    inp.oninput = () => {
+      const c = {}, cur = resolved();
+      for (const [kk] of COLORS) c[kk] = cur[kk];
+      c[k] = inp.value;
+      settings.theme.custom = c; settings.theme.preset = "custom";
+      save(); applyTheme();
+    };
+    pk.append(mk("label", { className: "pick" }, name, inp));
+  }
+  $("fmt").value = settings.use24 ? "24" : "12";
+  $("size").value = settings.size;
+  $("secs").checked = settings.seconds;
+  $("showPass").checked = settings.showPassing;
+  $("fx").checked = settings.effects;
+  for (const id of ["autoL", "autoD"]) {
+    const sel = $(id); sel.textContent = "";
+    Object.keys(PRESETS).forEach(k => sel.append(mk("option", { value: k, textContent: PRESETS[k].label })));
+  }
+  $("autoL").value = settings.theme.autoLight; $("autoD").value = settings.theme.autoDark;
+  $("font").value = settings.font; $("corners").value = settings.corners;
+  $("ringw").value = settings.ring; $("bgstyle").value = settings.bgStyle;
+  $("shNote").checked = settings.showNote; $("shPct").checked = settings.showPercent; $("shNum").checked = settings.showNumDate;
+  $("alOn").checked = settings.alert.on;
+  $("alMins").value = String(settings.alert.mins);
+  $("alSound").checked = settings.alert.sound;
+}
+$("fmt").onchange = e => { settings.use24 = e.target.value === "24"; save(); applyDisplay(); };
+$("size").onchange = e => { settings.size = e.target.value; save(); applyDisplay(); };
+$("secs").onchange = e => { settings.seconds = e.target.checked; save(); tick(); };
+$("autoL").onchange = e => { settings.theme.autoLight = e.target.value; save(); applyTheme(); };
+$("autoD").onchange = e => { settings.theme.autoDark = e.target.value; save(); applyTheme(); };
+for (const [id, key] of [["font", "font"], ["corners", "corners"], ["ringw", "ring"], ["bgstyle", "bgStyle"]])
+  $(id).onchange = e => { settings[key] = e.target.value; save(); applyDisplay(); };
+for (const [id, key] of [["shNote", "showNote"], ["shPct", "showPercent"], ["shNum", "showNumDate"]])
+  $(id).onchange = e => { settings[key] = e.target.checked; save(); applyDisplay(); };
+$("fx").onchange = e => { settings.effects = e.target.checked; save(); lastKey = ""; tick(); };
+$("showPass").onchange = e => { settings.showPassing = e.target.checked; save(); lastKey = ""; tick(); };
+$("alOn").onchange = e => { settings.alert.on = e.target.checked; save(); tick(); };
+$("alMins").onchange = e => { settings.alert.mins = +e.target.value; save(); tick(); };
+$("alSound").onchange = e => { settings.alert.sound = e.target.checked; save(); if (e.target.checked) beep(1, 880); };
+$("alTest").onclick = () => beep(2, 880);
+
+// ---- Share and sync ----
+// share codec start
+class ShareError extends Error {}
+const b64 = u8 => { let s = ""; u8.forEach(b => { s += String.fromCharCode(b); }); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64 = t => { t = t.replace(/-/g, "+").replace(/_/g, "/"); while (t.length % 4) t += "="; return Uint8Array.from(atob(t), c => c.charCodeAt(0)); };
+async function encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      const buf = await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+      return "z" + b64(new Uint8Array(buf));
+    } catch (e) {}
+  }
+  return "r" + b64(bytes);
+}
+async function decode(code) {
+  const tag = code[0];
+  const bytes = unb64(code.slice(1));
+  if (tag === "z") {
+    if (typeof DecompressionStream === "undefined") throw new ShareError("This browser can’t open that link. Try a newer browser.");
+    const buf = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+  if (tag === "r") return JSON.parse(new TextDecoder().decode(bytes));
+  throw new ShareError("That link or code isn’t valid.");
+}
+// share codec end
+
+async function makePayload(full) {
+  const o = { v: 1, schedules: settings.schedules.map(s => ({ name: s.name, days: s.days, passing: s.passing, periods: s.periods })) };
+  if (full) { o.theme = settings.theme; o.use24 = settings.use24; o.seconds = settings.seconds; o.size = settings.size; o.showPassing = settings.showPassing; o.effects = settings.effects; o.alert = settings.alert;
+    for (const k of ["font", "corners", "ring", "bgStyle", "showNote", "showPercent", "showNumDate"]) o[k] = settings[k];
+  }
+  return encode(JSON.stringify(o));
+}
+function importPayload(o) {
+  const sch = cleanSchedules(o && o.schedules);
+  if (!sch.length) throw new ShareError("No schedule was found in that link or code.");
+  const n = sanitize(o);
+  settings.schedules = n.schedules; settings.editing = n.schedules[0].id;
+  settings.override = null; settings.adjust = null;
+  if (o.theme) settings.theme = n.theme;
+  if ("use24" in o || "seconds" in o || "size" in o) { settings.use24 = n.use24; settings.seconds = n.seconds; settings.size = n.size; }
+  if ("showPassing" in o) settings.showPassing = n.showPassing;
+  if ("effects" in o) settings.effects = n.effects;
+  for (const k of ["font", "corners", "ring", "bgStyle", "showNote", "showPercent", "showNumDate"]) if (k in o) settings[k] = n[k];
+  if (o.alert) settings.alert = n.alert;
+  save(); buildAll();
+}
+const clearHash = () => { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} };
+
+$("mkLink").onclick = async () => {
+  const msg = $("shareMsg");
+  try {
+    const url = location.href.split("#")[0] + "#s=" + await makePayload($("shareAll").checked);
+    const out = $("linkOut"); out.value = url; out.hidden = false; out.select();
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {}
+    msg.textContent = ok ? "Link copied. Open it on another device to import." : "Select the link above and copy it, then open it on another device.";
+  } catch (e) { msg.textContent = "Couldn’t make a link. Try again."; }
+};
+arm($("doImport"), "Tap again to replace my schedules", async () => {
+  const msg = $("shareMsg"), raw = $("importIn").value.trim();
+  if (!raw) { msg.textContent = "Paste a share link or code first."; return; }
+  try {
+    const m = /[#&?]s=([A-Za-z0-9_-]+)/.exec(raw);
+    importPayload(await decode(m ? m[1] : raw.replace(/\s+/g, "")));
+    $("importIn").value = ""; msg.textContent = "Imported.";
+  } catch (e) {
+    msg.textContent = e instanceof ShareError ? e.message : "That link or code didn’t work. Check that you copied all of it.";
+  }
+});
+
+// Opening someone's share link offers to import it (never imports on its own)
+let pendingShare = null;
+async function checkHash() {
+  const m = /[#&]s=([A-Za-z0-9_-]+)/.exec(location.hash);
+  if (!m) return;
+  try {
+    const o = await decode(m[1]), sch = cleanSchedules(o.schedules);
+    if (!sch.length) throw new ShareError("empty");
+    pendingShare = o;
+    $("bannerTxt").textContent = "A shared " + (sch.length === 1 ? "schedule" : sch.length + " schedules") +
+      " is ready (" + sch.slice(0, 3).map(label).join(", ") + (sch.length > 3 ? ", …" : "") + "). Import it? This replaces the schedules on this device.";
+    $("banner").hidden = false;
+  } catch (e) { clearHash(); }
+}
+$("bImport").onclick = () => { try { importPayload(pendingShare); } catch (e) {} pendingShare = null; $("banner").hidden = true; clearHash(); };
+$("bDismiss").onclick = () => { pendingShare = null; $("banner").hidden = true; clearHash(); };
+addEventListener("hashchange", checkHash);
+
+// ---- Reset, open/close, start ----
+function buildAll() { buildSchedUI(); buildThemeUI(); applyTheme(); applyDisplay(); }
+arm($("reset"), "Tap again to reset", () => {
+  try { localStorage.removeItem(KEY); localStorage.removeItem("schoolSchedule.v2"); } catch (e) {}
+  settings = clone(DEFAULTS);
+  buildAll();
+});
+
+const dlg = $("dlg");
+$("gear").onclick = () => dlg.showModal();
+$("close").onclick = $("done2").onclick = () => dlg.close();
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+
+buildAll();
+checkHash();
+setInterval(tick, 500);
+</script>
+</body>
+</html>

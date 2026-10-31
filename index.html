@@ -9,410 +9,14 @@
 <meta property="og:title" content="School Schedule">
 <meta property="og:description" content="How much school is left today?">
 <meta property="og:type" content="website">
+<link rel="stylesheet" href="styles.css">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="shortcut icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>School Schedule</title>
-<style>
-/*
-  Visual system
-  -------------
-  Theme colors and spacing live on :root so every component can share the same
-  palette. Data attributes on :root and individual cards are the small state
-  API used by JavaScript; they let the stylesheet react without rebuilding UI.
-*/
-:root{
-  --bg:#eef1f4; --card:#ffffff; --ink:#14213d; --hi:#ffd23f; --bar:#14213d; --hi-ink:#14161c; --warn:#c2410c;
-  --go:#0b8a74; --gold:#d99a00; --danger:#d62828; --on-warn:#ffffff; --on-danger:#ffffff; --scrim:#000000;
-  --rc:20px; --rm:10px; --rs:12px; --ringw:12;
-  --space-1:6px; --space-2:10px; --space-3:14px;
-  --accent:var(--bar); --glow:var(--hi); --glow-now:var(--glow); --hype:0;
-  --line:color-mix(in srgb, var(--ink) 14%, var(--bg));
-  --muted:color-mix(in srgb, var(--ink) 62%, var(--bg));
-  --shadow:0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent), 0 14px 34px -18px color-mix(in srgb, var(--ink) 40%, transparent);
-  --font:ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif;
-  color-scheme:light;
-  accent-color:var(--bar);
-  scrollbar-color:color-mix(in srgb, var(--ink) 35%, var(--bg)) var(--bg);
-}
-/* This is the first-paint fallback. applyTheme() replaces it with the chosen
-   palette after saved settings have loaded. */
-@media (prefers-color-scheme:dark){
-  :root{--bg:#10151f; --card:#18202e; --ink:#e8ecf3; --hi:#ffd23f; --bar:#ffd23f; --warn:#ff8a4c; --go:#3ddbc0; --gold:#ffd23f; --danger:#ff6b6b; --on-warn:#14161c; --on-danger:#14161c; color-scheme:dark}
-}
-*{box-sizing:border-box}
-::selection{background:var(--hi); color:var(--hi-ink)}
-html{height:100%}
-body{
-  margin:0; min-height:100%; color:var(--ink); font-family:var(--font); line-height:1.4;
-  background-color:var(--bg);
-  background-image:radial-gradient(90% 460px at 50% 0, color-mix(in srgb, var(--glow) 22%, transparent), transparent);
-  background-repeat:no-repeat;
-  padding:max(18px,env(safe-area-inset-top,0px)) 18px max(30px,env(safe-area-inset-bottom,0px));
-}
-main{width:min(100%,1080px); margin:0 auto; animation:mainIn .5s cubic-bezier(.22,1,.36,1) both}
-body::before{
-  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:radial-gradient(90% 520px at 50% 0, color-mix(in srgb, var(--glow-now) 34%, transparent), transparent);
-  opacity:var(--hype); transition:opacity .8s;
-}
-:root[data-bg="flat"] body{background-image:none}
-:root[data-bg="gradient"] body{background-image:linear-gradient(160deg, color-mix(in srgb, var(--glow) 24%, var(--bg)), var(--bg) 55%, color-mix(in srgb, var(--bar) 14%, var(--bg)))}
-.card{background:var(--card); border:1px solid var(--line); border-radius:var(--rc); box-shadow:var(--shadow)}
-/* The main dashboard is intentionally one centered column; widening the
-   column on desktops reduces empty margins while keeping the reading order. */
-main > .top,main .banner,main .hero,main .stats,main h2,main ol{
-  animation:riseIn .55s cubic-bezier(.22,1,.36,1) both;
-}
-main .banner{animation-delay:.04s}
-main .hero{animation-delay:.08s}
-main .stats{animation-delay:.14s}
-main h2{animation-delay:.18s}
-main ol{animation-delay:.22s}
-@keyframes mainIn{from{opacity:0} to{opacity:1}}
-@keyframes riseIn{from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)}}
-
-.top{display:flex; justify-content:space-between; align-items:center; gap:12px}
-.top .l{display:flex; flex-direction:column; gap:6px; align-items:flex-start; min-width:0}
-.top .r{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; font-weight:600}
-#date{font-weight:700}
-.daterow{display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px}
-.dnum{color:var(--muted); font-weight:600; font-variant-numeric:tabular-nums}
-.pill{
-  display:inline-block; max-width:100%; padding:3px 12px; border-radius:99px; font-size:.82rem; font-weight:700;
-  background:var(--hi); color:var(--hi-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.pill[hidden]{display:none}
-.icon{
-  display:grid; place-items:center; width:42px; height:42px; padding:0; border-radius:var(--rs);
-  background:var(--card); color:var(--ink); border:1px solid var(--line); cursor:pointer; box-shadow:var(--shadow);
-  position:relative; transition:transform .12s ease, background .25s ease, border-color .25s ease, box-shadow .25s ease;
-}
-.icon:not(:disabled):hover{
-  border-color:var(--hi);
-  color:var(--ink);
-  background:color-mix(in srgb, var(--hi) 18%, var(--card));
-  box-shadow:0 8px 22px -10px color-mix(in srgb, var(--hi) 60%, transparent);
-}
-.icon:not(:disabled):active{transform:scale(.94)}
-
-.banner{margin-top:16px; padding:14px 16px}
-.banner[hidden]{display:none}
-.banner p{margin:0 0 10px; font-weight:600}
-
-.hero{margin-top:18px; padding:22px 16px 20px; text-align:center; position:relative; overflow:hidden; isolation:isolate; transition:border-color .4s}
-.hero::before{
-  content:""; position:absolute; inset:0 0 auto; height:75%; z-index:-1; pointer-events:none;
-  background:radial-gradient(70% 100% at 50% 0, color-mix(in srgb, var(--glow-now) 40%, transparent), transparent 72%);
-  opacity:calc(.25 + var(--hype) * .75); transition:opacity .6s;
-}
-.confetti{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:1}
-.confetti span{position:absolute; top:-16px; width:8px; height:14px; border-radius:2px; animation:fall 3s ease-in both}
-.now{font-size:clamp(1.4rem,5.5vw,1.9rem); font-weight:800; letter-spacing:-.01em}
-.ring-pair{display:grid; grid-template-columns:minmax(0,1fr); gap:12px; width:min(720px,100%); margin:12px auto 4px; transition:grid-template-columns .32s ease,gap .32s ease}
-.ring-panel{min-width:0; padding:10px; border:1px solid transparent; border-radius:var(--rm); background:transparent; transition:background .25s ease,border-color .25s ease,box-shadow .25s ease; animation:panelIn .28s ease both}
-.ring-panel-head{display:grid; gap:4px; justify-items:center; min-height:38px; margin:0 0 4px; color:var(--muted); font-size:.82rem}
-.ring-panel-head strong{color:var(--ink); font-size:.9rem}
-.ring-panel-head select{width:min(100%,250px); min-height:36px; padding:5px 28px 5px 10px; font-size:.82rem; text-align:center}
-.ringwrap{position:relative; width:min(300px,76vw); aspect-ratio:1; margin:0 auto}
-.ringwrap[hidden]{display:none}
-.ringwrap svg{width:100%; height:100%; display:block; overflow:visible}
-.ring-pair.is-comparing{grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
-.ring-pair.is-comparing .ring-panel{border-color:var(--line); background:color-mix(in srgb,var(--ink) 2%,var(--card)); box-shadow:0 2px 10px color-mix(in srgb,var(--ink) 5%,transparent)}
-.ring-pair.is-comparing .ringwrap{width:min(300px,100%)}
-.ring-pair.is-comparing .count{font-size:clamp(1.1rem,5vw,2.7rem)}
-.ring-pair.is-comparing .unit{font-size:clamp(.65rem,1.8vw,.88rem)}
-.ring-pair.is-comparing .pct{font-size:clamp(.68rem,1.8vw,.9rem)}
-@keyframes panelIn{from{opacity:.35; transform:translateY(5px)}to{opacity:1; transform:translateY(0)}}
-.hero.compare-mode > .now,.hero.compare-mode > .sub,.hero.compare-mode > .det,.hero.compare-mode > .next,.hero.compare-mode > .badge{display:none}
-main[data-comparing="true"] .stats,main[data-comparing="true"] #scheduleTitle,main[data-comparing="true"] #list{display:none}
-@media(max-width:520px){.ring-pair.is-comparing{gap:6px}.ring-pair.is-comparing .ring-panel{padding:5px}.ring-panel-head{font-size:.72rem}.ring-panel-head strong{font-size:.78rem}.ring-panel-head select{font-size:.74rem;padding-inline:5px;min-height:34px}.ring-pair.is-comparing .count{font-size:clamp(1rem,6vw,1.45rem)}.ring-pair.is-comparing .unit{font-size:.68rem}.ring-pair.is-comparing .pct{font-size:.68rem}}
-@media(prefers-reduced-motion:reduce){.ring-pair,.ring-panel{transition:none;animation:none}}
-.trk{fill:none; stroke:var(--line); stroke-width:var(--ringw)}
-.prog{
-  fill:none; stroke:var(--accent); stroke-width:var(--ringw); stroke-linecap:round;
-  transition:stroke-dashoffset .5s linear, stroke .4s;
-  filter:drop-shadow(0 0 6px color-mix(in srgb, var(--glow-now) 70%, transparent));
-}
-.compare-progress{stroke:var(--go); filter:drop-shadow(0 0 6px color-mix(in srgb,var(--go) 60%,transparent))}
-.center{position:absolute; inset:0; display:grid; place-content:center; text-align:center; padding:0 18%}
-.count{
-  margin:0; font-size:clamp(2.6rem,13vw,3.8rem); font-weight:800; line-height:1;
-  font-variant-numeric:tabular-nums; letter-spacing:-.03em; transition:color .4s, transform .6s;
-  transform:scale(calc(1 + var(--hype) * .06));
-}
-.unit{margin:6px 0 0; color:var(--muted); font-size:.92rem; font-weight:600}
-.pct{margin:8px 0 0; font-weight:700; font-size:.95rem; font-variant-numeric:tabular-nums}
-.sub{margin:6px 0 0; color:var(--muted)}
-.det{margin:4px 0 0; font-weight:700}
-.pct:empty,.det:empty,.next:empty{display:none}
-.next{margin:6px 0 0; color:var(--muted); font-size:.92rem}
-.notetxt{margin:6px 0 0; font-weight:700; font-size:1.05rem; overflow-wrap:anywhere}
-.notetxt.muted{color:var(--muted); font-weight:500}
-.badge{
-  display:inline-block; margin:12px 0 0; padding:5px 16px; border-radius:99px; font-weight:800;
-  background:var(--hi); color:var(--hi-ink);
-}
-.badge[hidden]{display:none}
-.badge[data-kind="warn"]{background:var(--warn); color:var(--on-warn); animation:pulse 1.6s ease-in-out infinite}
-.badge[data-kind="danger"]{background:var(--danger); color:var(--on-danger); animation:pulse .7s ease-in-out infinite}
-
-/* Situational looks: the page sets data-tone and data-level on the root element */
-/* tick() writes these root attributes to select the current activity colors. */
-:root[data-tone="go"]{--accent:var(--go)}
-:root[data-tone="warn"]{--accent:var(--warn); --glow-now:var(--warn)}
-:root[data-tone="danger"]{--accent:var(--danger)}
-:root[data-tone="gold"]{--accent:var(--gold)}
-:root[data-tone="off"]{--accent:var(--muted)}
-:root[data-tone="go"] .count,:root[data-tone="warn"] .count,:root[data-tone="danger"] .count{color:var(--accent)}
-:root[data-level="danger"] .hero{border-color:var(--danger)}
-:root[data-level="danger"] .center{animation:beat .8s ease-in-out infinite}
-:root[data-level="danger"] .prog{animation:ringpulse .8s ease-in-out infinite}
-:root[data-level="warn"] .center{animation:beat 1.8s ease-in-out infinite}
-.hero.flash{animation:flash 1.2s ease-out 2}
-@keyframes pulse{50%{opacity:.6}}
-@keyframes beat{50%{transform:scale(1.06)}}
-@keyframes ringpulse{50%{opacity:.5; filter:drop-shadow(0 0 16px var(--glow-now))}}
-@keyframes flash{
-  0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--glow-now) 75%, transparent)}
-  100%{box-shadow:0 0 0 26px transparent}
-}
-@keyframes fall{
-  0%{transform:translate3d(0,0,0) rotate(0); opacity:1}
-  100%{transform:translate3d(var(--dx,0),560px,0) rotate(var(--rot,0)); opacity:0}
-}
-
-.stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 0}
-:root[data-note="off"] .stats{grid-template-columns:1fr}
-:root[data-note="off"] #noteCard{display:none}
-:root[data-pct="off"] .pct{display:none}
-:root[data-numdate="off"] .dnum{display:none}
-.stat{padding:16px 16px 14px}
-.stat b{display:block; font-size:1.45rem; line-height:1.2; font-variant-numeric:tabular-nums}
-.stat span{color:var(--muted); font-size:.9rem}
-.stat .pct,.stat .det{font-size:.92rem}
-.stat[data-final="1"]{border-color:var(--hi); box-shadow:0 0 0 2px color-mix(in srgb, var(--hi) 35%, transparent), var(--shadow)}
-.stat[data-final="2"]{border-color:var(--warn); box-shadow:0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent), var(--shadow)}
-
-h2{font-size:1.1rem; margin:28px 4px 10px}
-ol{list-style:none; margin:0; padding:6px; overflow:hidden}
-li{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:var(--rs)}
-li .nm{display:block}
-li .dt{display:block; color:var(--muted); font-size:.88rem; font-weight:500}
-li .t{color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
-li.done{opacity:.45}
-li.cur{background:var(--hi); color:var(--hi-ink); font-weight:700; opacity:1}
-li.cur .t,li.cur .dt{color:var(--hi-ink)}
-li.empty{color:var(--muted); justify-content:center}
-li.schedule-heading{
-  display:block; margin:10px 8px 2px; padding:12px 8px 8px;
-  border-top:1px solid var(--line); border-radius:0; color:var(--muted);
-  font-size:.82rem; font-weight:750; letter-spacing:.06em; text-transform:uppercase;
-}
-li.schedule-heading:first-child{margin-top:0; border-top:0}
-li.pass{padding:7px 14px; font-size:.88rem; color:var(--muted); font-weight:500}
-li.pass.cur{background:color-mix(in srgb, var(--hi) 55%, var(--card)); color:var(--hi-ink); font-weight:700}
-li.pass.cur .t{color:var(--hi-ink)}
-
-/* Settings dialog: its sticky header stays available while longer forms scroll. */
-dialog{
-  width:min(820px,calc(100% - 20px)); max-height:90vh; padding:0; overflow:auto;
-  border:1px solid var(--line); border-radius:var(--rc); background:var(--card); color:var(--ink); font-family:var(--font);
-  margin:clamp(14px,3.5vh,48px) auto auto;   /* pin near the top so tab switches don't shift it */
-}
-dialog[open]{animation:dlgIn .32s cubic-bezier(.22,1,.36,1) both}
-dialog::backdrop{
-  background:color-mix(in srgb, var(--scrim, #000) 62%, transparent);
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-  animation:backdropIn .32s ease both;
-}
-@keyframes dlgIn{
-  from{opacity:0; transform:translateY(14px) scale(.98)}
-  to{opacity:1; transform:translateY(0) scale(1)}
-}
-@keyframes backdropIn{from{opacity:0} to{opacity:1}}
-.dhead{
-  position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center;
-  padding:14px 18px; background:var(--card); border-bottom:1px solid var(--line);
-}
-.dhead h2{margin:0; font-size:1.25rem}
-.dbody{padding:4px 18px 20px}
-.dbody h3{margin:0; padding-top:18px; font-size:1.1rem}
-.dbody > h3:not(:first-child){margin-top:24px; border-top:1px solid var(--line)}
-.hint{color:var(--muted); font-size:.9rem; margin:4px 0 10px}
-.stabs{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:2px 0 16px; padding-bottom:14px; border-bottom:1px solid var(--line)}
-.stab{
-  background:transparent; color:var(--muted); border:1px solid transparent; font-weight:700; padding:8px 18px;
-  border-radius:99px; position:relative;
-  transition:color .25s ease, background .25s ease, border-color .25s ease, transform .15s ease, box-shadow .25s ease;
-}
-.stab:not(:disabled):hover{
-  color:var(--ink); background:color-mix(in srgb, var(--ink) 8%, transparent);
-  transform:translateY(-1px);
-}
-.stab:not(:disabled):active{transform:translateY(0) scale(.97)}
-.stab[aria-selected="true"]{
-  background:var(--hi); color:var(--hi-ink); border-color:var(--hi);
-  box-shadow:0 6px 18px -8px color-mix(in srgb, var(--hi) 70%, transparent);
-}
-.stab:focus-visible{outline:3px solid color-mix(in srgb, var(--hi) 70%, transparent); outline-offset:2px}
-.panel{padding-top:2px; animation:panelIn .34s cubic-bezier(.22,1,.36,1) both}
-.panel[hidden]{display:none !important}
-@keyframes panelIn{
-  from{opacity:0; transform:translateY(8px)}
-  to{opacity:1; transform:translateY(0)}
-}
-.label{font-weight:700; font-size:.92rem; margin:16px 0 6px}
-.section-title{margin-top:22px; padding-top:14px; border-top:1px solid var(--line)}
-.today > .section-title{padding-top:0; border-top:0}
-input[type=text],input[type=time],input[type=number],select{
-  font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
-  border-radius:var(--rm); padding:9px 11px; min-width:0; min-height:42px;
-}
-input[type=number]{width:96px}
-.field{display:block}
-.field input{width:100%; margin-top:6px}
-#linkOut{width:100%; margin-top:10px}
-.prow{
-  /* Each period is one visual group. Grid areas keep the same fields aligned
-     across rows while allowing the mobile layout below to stack them. */
-  display:grid; gap:8px; margin-bottom:10px; padding:12px;
-  border:1px solid var(--line); border-radius:var(--rm);
-  background:color-mix(in srgb, var(--ink) 3%, var(--card));
-  grid-template-columns:1fr auto auto auto; grid-template-areas:"n s e x" "t r r r" "o o o o";
-}
-.prow input{background:var(--card); border-color:color-mix(in srgb, var(--ink) 10%, var(--card))}
-.prow input:focus{background:var(--bg)}
-.prow.pass{grid-template-areas:"n s e x" "o o o o"; border-left:3px solid var(--go)}
-.prow.pass .f-t,.prow.pass .f-r{display:none}
-.f-n{grid-area:n}.f-s{grid-area:s}.f-e{grid-area:e}.f-x{grid-area:x}.f-t{grid-area:t}.f-r{grid-area:r}.f-o{grid-area:o}
-@media (max-width:480px){
-  .prow{grid-template-columns:1fr 1fr auto; grid-template-areas:"n n n" "s e x" "t r r" "o o o"}
-  .prow.pass{grid-template-areas:"n n n" "s e x" "o o o"}
-}
-button{
-  font:inherit; font-weight:700; padding:9px 14px; min-height:42px; border-radius:var(--rm); cursor:pointer;
-  border:1px solid var(--ink); background:var(--ink); color:var(--bg);
-}
-button.alt,button.x{background:transparent; color:var(--ink); border-color:var(--line)}
-button.x{padding:8px 12px}
-button:disabled{opacity:.4; cursor:not-allowed}
-button.danger{background:var(--danger); border-color:var(--danger); color:var(--on-danger)}
-.btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
-.err{color:var(--danger); font-weight:600; margin:4px 0 6px; min-height:1.2em}
-.tabs{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 6px}
-.dashboard-set-controls{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:10px 0 2px}
-.dashboard-set-controls label{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.9rem; font-weight:700}
-.dashboard-set-controls select{width:auto; min-width:160px}
-.set-manager{margin:16px 0 20px; padding:14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 3%,var(--card))}
-.set-manager > .label{margin-top:0}
-.set-tabs .tab[aria-pressed="true"]{background:var(--hi); color:var(--hi-ink); border-color:var(--hi)}
-.set-manager .field{max-width:460px}
-.import-status{padding:12px 16px; font-weight:700}
-.set-comparison{margin:18px 0}
-.set-comparison[hidden]{display:none}
-.set-comparison h2{margin:0 4px 6px}
-.selected-schedule-comparison{margin:12px 0 20px; padding:14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
-.selected-schedule-comparison h3,.week-breakdown-title{margin:0 4px 10px; font-size:1rem}
-.selected-schedule-comparison .compare-day-grid{gap:10px}
-.selected-schedule-comparison .compare-set-column{padding:10px; border:1px solid var(--line); border-radius:var(--rs); background:var(--card)}
-.selected-schedule-comparison .compare-set-column + .compare-set-column{border-left:1px solid var(--line)}
-.selected-schedule-card{padding:10px; border:1px solid var(--line); border-radius:var(--rs); background:var(--bg); transition:opacity .22s ease,transform .22s ease}
-.selected-schedule-card > strong{display:block}
-.selected-schedule-card .compare-periods{margin-top:8px}
-.selected-schedule-card.is-switching{animation:selectedScheduleIn .28s ease both}
-.selected-preview-note{margin:4px 0; color:var(--muted); font-size:.78rem}
-@keyframes selectedScheduleIn{from{opacity:.45; transform:translateY(5px)}to{opacity:1; transform:translateY(0)}}
-.week-breakdown-title{margin:0 4px 6px}
-.week-comparison{display:grid; gap:10px; margin-top:12px}
-.compare-day{border:1px solid var(--line); border-radius:var(--rm); background:var(--card); overflow:hidden}
-.compare-day[open]{box-shadow:var(--shadow)}
-.compare-day summary{padding:12px 14px; cursor:pointer; font-weight:800; background:color-mix(in srgb,var(--ink) 4%,var(--card))}
-.compare-day[open] summary{border-bottom:1px solid var(--line)}
-.compare-day-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0}
-.compare-set-column{min-width:0; padding:12px}
-.compare-set-column + .compare-set-column{border-left:1px solid var(--line)}
-.compare-set-column h4{margin:0 0 10px; font-size:.95rem}
-.compare-schedule{padding:10px; border:1px solid var(--line); border-radius:var(--rs); margin-top:8px; background:var(--bg)}
-.compare-schedule{transition:border-color .24s ease,box-shadow .24s ease,background-color .24s ease}
-.compare-schedule.ring-selected{border-color:var(--hi); box-shadow:0 0 0 2px color-mix(in srgb,var(--hi) 28%,transparent)}
-.compare-schedule > strong{display:block}
-.compare-live{display:block; margin:4px 0 8px; color:var(--accent); font-weight:700; font-size:.88rem}
-.compare-periods{list-style:none; margin:0; padding:0; display:grid; gap:3px}
-.compare-periods li{display:grid; grid-template-columns:auto 1fr; padding:5px 6px; border-radius:6px; font-size:.82rem; line-height:1.3; transition:background-color .22s ease,color .22s ease}
-.compare-periods li.current{background:var(--hi); color:var(--hi-ink); font-weight:700}
-.compare-periods .period-time{font-variant-numeric:tabular-nums; color:var(--muted); margin-right:6px; white-space:nowrap}
-.compare-periods .period-meta{grid-column:2; color:var(--muted); font-size:.76rem}
-.compare-periods .period-meta:empty{display:none}
-.compare-periods li.current .period-time{color:var(--hi-ink)}
-.compare-periods li.current .period-meta{color:var(--hi-ink)}
-.compare-empty{color:var(--muted); margin:0; font-size:.9rem}
-@media (max-width:560px){.compare-day-grid{grid-template-columns:1fr}.compare-set-column + .compare-set-column{border-left:0; border-top:1px solid var(--line)}.selected-schedule-comparison .compare-set-column + .compare-set-column{border-left:0; border-top:1px solid var(--line)}.dashboard-set-controls label{width:100%; justify-content:space-between}.dashboard-set-controls select{width:55%}}
-@media(prefers-reduced-motion:reduce){.selected-schedule-card,.selected-schedule-card.is-switching{animation:none;transition:none}}
-.days{display:flex; flex-wrap:wrap; gap:8px}
-.appearance{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:12px 0 22px}
-.appearance button{display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); color:var(--ink); background:var(--card); text-align:left}
-.appearance button[aria-pressed="true"]{border-color:var(--bar); box-shadow:0 0 0 2px color-mix(in srgb,var(--bar) 20%,transparent)}
-.appearance small{color:var(--muted); font-weight:500}
-.themes{display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:12px; margin-top:12px}
-.theme-card{display:flex; flex-direction:column; gap:9px; padding:10px; border:1px solid var(--line); border-radius:var(--rm); background:var(--card); color:var(--ink); text-align:left}
-.theme-card[aria-pressed="true"]{border-color:var(--bar); box-shadow:0 0 0 2px color-mix(in srgb,var(--bar) 22%,transparent)}
-.theme-preview{height:62px; width:100%; overflow:hidden; display:flex; gap:7px; align-items:center; padding:10px; border:1px solid color-mix(in srgb,var(--ink) 12%,transparent); border-radius:8px}
-.theme-preview i{display:block; height:34px; flex:1; border-radius:6px}
-.theme-preview i:last-child{height:8px; align-self:center; flex:.6}
-.theme-card strong{font-size:.92rem}
-.custom-colors{margin-top:18px; border-top:1px solid var(--line); padding-top:14px}
-.custom-colors summary{font-weight:700; cursor:pointer}
-.week-overview{display:grid; grid-template-columns:repeat(7,minmax(120px,1fr)); gap:7px; margin:12px 0 18px; overflow-x:auto; padding:8px 0 12px; border-bottom:1px solid var(--line)}
-.week-day{min-width:0; padding:9px 6px; border:1px solid var(--line); border-radius:var(--rs); background:var(--bg); text-align:center}
-.week-day strong{display:block}
-.week-day strong{font-size:.82rem}
-.week-day-list{display:grid; gap:4px; margin-top:6px}
-.week-day-list span{display:block; overflow-wrap:anywhere; padding:3px 5px; border-radius:6px; background:color-mix(in srgb,var(--ink) 5%,var(--card)); color:var(--muted); font-size:.72rem; line-height:1.25}
-.week-day-list .week-day-empty{background:none; font-style:italic}
-.week-day[data-today="true"]{border-color:var(--bar); box-shadow:inset 0 0 0 1px var(--bar)}
-.week-day[data-empty="true"] span{font-style:italic}
-.backup{margin-top:22px; padding-top:14px; border-top:1px solid var(--line)}
-.backup .label{margin-top:0}
-.shortcut-list kbd{display:inline-block; min-width:32px; margin-right:8px; padding:3px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); text-align:center; font:600 .9rem ui-monospace,monospace}
-/* Shared selectable-pill style for schedule tabs and day chips */
-.tab,.day{
-  background:var(--bg); color:var(--ink); border-color:var(--line); border-radius:99px;
-  transition:color .22s ease, background .22s ease, border-color .22s ease, transform .15s ease, box-shadow .22s ease;
-}
-.tab{font-weight:700}
-.day{display:flex; align-items:center; gap:6px; padding:7px 13px; cursor:pointer}
-.tab:not(:disabled):hover,.day:hover{
-  color:var(--ink); background:color-mix(in srgb, var(--ink) 9%, var(--card)); transform:translateY(-1px);
-}
-.tab:not(:disabled):active,.day:active{transform:scale(.96)}
-.tab[aria-pressed="true"],.day:has(input:checked){
-  background:var(--hi); color:var(--hi-ink); border-color:var(--hi);
-  box-shadow:0 6px 18px -8px color-mix(in srgb, var(--hi) 70%, transparent);
-}
-.pickers{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:14px}
-.pick{display:flex; align-items:center; justify-content:space-between; gap:8px}
-input[type=color]{width:44px; height:34px; padding:0; border:1px solid var(--line); border-radius:var(--rm); background:none; cursor:pointer}
-.opts{display:grid; gap:10px; margin-top:10px}
-.opt{display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); min-height:42px}
-.opt select,.opt input:not([type=checkbox]){width:min(240px,48%); flex:none}
-input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi); cursor:pointer}
-.today{margin-top:18px; padding-top:4px; border-top:1px dashed var(--line); display:grid; gap:10px}
-.today .label{margin:12px 0 0}
-.today .pass-default{margin-top:14px}
-.foot{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:26px}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--hi); outline-offset:2px}
-button:not(:disabled){transition:transform .12s ease, background .2s, color .2s, border-color .2s, box-shadow .2s}
-button:not(:disabled):hover{filter:brightness(1.08)}
-button.alt:not(:disabled):hover,button.x:not(:disabled):hover{background:color-mix(in srgb,var(--ink) 7%,var(--card))}
-button:not(:disabled):active{transform:scale(.96)}
-button{user-select:none; -webkit-tap-highlight-color:transparent}
-li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent), 0 6px 18px -8px color-mix(in srgb, var(--hi) 60%, transparent)}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important; transition:none !important}}
-@media (max-width:480px){.opt select,.opt input:not([type=checkbox]){width:46%}.appearance{gap:6px}.appearance button{padding:10px}}
-</style>
 </head>
 <body>
+<a class="skip-link" href="#scheduleTitle">Skip to today&rsquo;s schedule</a>
 <!-- The dashboard has a deliberate reading order: date, live countdown,
      at-a-glance totals, then the detailed list of today's periods. -->
 <main id="main">
@@ -426,32 +30,33 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
       <button class="icon" id="gear" type="button" aria-label="Open settings">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
       </button>
-      <button class="icon" id="helpKeys" type="button" aria-label="Show keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
+      <button class="icon" id="helpKeys" type="button" aria-label="Help and keyboard shortcuts" title="Help (?)">?</button>
     </span>
   </div>
 
-  <div class="dashboard-set-controls">
-    <label>Viewing set <select id="activeSetSelect" aria-label="Schedule set to view"></select></label>
-    <label>Compare with <select id="compareSetSelect" aria-label="Schedule set to compare"></select></label>
+  <div class="dashboard-set-controls" id="dashboardGroupControls" hidden>
+    <label>Show week <select id="activeSetSelect" aria-label="Choose a schedule group to show"></select></label>
+    <label>Compare with <select id="compareSetSelect" aria-label="Choose another group to compare"></select></label>
   </div>
 
   <div class="card banner" id="banner" hidden>
     <p id="bannerTxt"></p>
     <div class="btns">
-      <button id="bImport" type="button">Choose import option</button>
+      <button id="bImport" type="button">Add or replace schedules</button>
       <button class="alt" id="bDismiss" type="button">Not now</button>
     </div>
   </div>
   <div class="card banner import-status" id="importStatus" role="status" hidden></div>
 
+  <div class="dashboard-focus">
   <section class="card hero" id="hero">
     <div class="confetti" id="confetti" aria-hidden="true"></div>
     <div class="now" id="now">Loading…</div>
     <div class="ring-pair" id="ringPair">
-      <section class="ring-panel" aria-label="Viewing set progress">
+      <section class="ring-panel" aria-label="Schedule progress">
         <div class="ring-panel-head">
-          <strong id="activeRingLabel">Viewing set</strong>
-          <select id="activeRingSchedule" aria-label="Schedule from viewed set"></select>
+          <strong id="activeRingLabel">My schedule</strong>
+          <select id="activeRingSchedule" aria-label="Choose a schedule for the ring"></select>
         </div>
         <div class="ringwrap" id="singleRingWrap">
           <svg viewBox="0 0 200 200" aria-hidden="true">
@@ -465,10 +70,10 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
           </div>
         </div>
       </section>
-      <section class="ring-panel" id="compareRingPanel" aria-label="Compared set progress" hidden>
+      <section class="ring-panel" id="compareRingPanel" aria-label="Compared schedule progress" hidden>
         <div class="ring-panel-head">
-          <strong id="compareRingLabel">Compared set</strong>
-          <select id="compareRingSchedule" aria-label="Schedule from compared set"></select>
+          <strong id="compareRingLabel">Compared group</strong>
+          <select id="compareRingSchedule" aria-label="Choose a schedule to compare"></select>
         </div>
         <div class="ringwrap">
           <svg viewBox="0 0 200 200" aria-hidden="true">
@@ -489,26 +94,25 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
     <p class="badge" id="badge" hidden></p>
   </section>
 
-  <section class="set-comparison" id="comparison" aria-label="Weekly comparison of schedule sets" hidden>
-    <h2 id="comparisonTitle">Weekly set comparison</h2>
-    <section class="selected-schedule-comparison" aria-label="Currently selected schedule comparison">
-      <h3 id="selectedScheduleTitle">Selected schedules</h3>
-      <div class="compare-day-grid" id="selectedScheduleGrid"></div>
-    </section>
-    <h3 class="week-breakdown-title">Full week</h3>
-    <p class="hint" id="comparisonHint">Open a day to see every schedule assigned to both sets.</p>
-    <div id="weekComparison" class="week-comparison"></div>
-  </section>
-
   <div class="stats" id="stats">
     <div class="card stat" id="statLeft"><b id="schoolLeft">--</b><span>left in the school day</span>
       <p class="pct" id="schoolPct"></p></div>
     <div class="card stat" id="noteCard"><span>Note</span>
       <p class="notetxt" id="noteTxt"></p></div>
   </div>
+  </div>
 
+  <section class="today-plan" aria-labelledby="scheduleTitle">
   <h2 id="scheduleTitle" tabindex="-1">Today’s schedule</h2>
-  <ol class="card" id="list"></ol>
+  <ol class="card" id="list" aria-labelledby="scheduleTitle"></ol>
+  </section>
+
+  <section class="set-comparison" id="comparison" aria-label="Weekly schedule comparison" hidden>
+    <h2 id="comparisonTitle">Compare schedules</h2>
+    <p class="hint comparison-hint" id="comparisonHint">Choose a day to see both groups’ schedules.</p>
+    <nav class="compare-day-tabs" id="compareDayTabs" aria-label="Choose a day to compare"></nav>
+    <div id="weekComparison" class="week-comparison"></div>
+  </section>
 </main>
 
 <!-- Settings are a native dialog so keyboard focus stays inside while open. -->
@@ -520,76 +124,90 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
   <div class="dbody">
     <div class="stabs" id="stabs" role="tablist" aria-label="Settings sections">
       <button class="stab" id="tab-schedules" type="button" data-tab="schedules" role="tab" aria-selected="true">Schedules</button>
-      <button class="stab" id="tab-theme" type="button" data-tab="theme" role="tab" aria-selected="false">Theme</button>
-      <button class="stab" id="tab-display" type="button" data-tab="display" role="tab" aria-selected="false">Display</button>
-      <button class="stab" id="tab-alerts" type="button" data-tab="alerts" role="tab" aria-selected="false">Bell alerts</button>
-      <button class="stab" id="tab-share" type="button" data-tab="share" role="tab" aria-selected="false">Share</button>
+      <button class="stab" id="tab-theme" type="button" data-tab="theme" role="tab" aria-selected="false">Look &amp; feel</button>
+      <button class="stab" id="tab-display" type="button" data-tab="display" role="tab" aria-selected="false">Clock &amp; display</button>
+      <button class="stab" id="tab-alerts" type="button" data-tab="alerts" role="tab" aria-selected="false">Reminders</button>
+      <button class="stab" id="tab-share" type="button" data-tab="share" role="tab" aria-selected="false">Share &amp; backup</button>
     </div>
 
     <div class="panel" data-tab="schedules">
-    <p class="hint">Organize schedules into sets, such as your own week and a friend’s week. Compare two sets from the dashboard.</p>
+    <p class="hint">Keep different weeks together, like yours and a friend’s. You can compare two groups on the home screen.</p>
     <div class="set-manager">
-      <p class="label">Schedule sets</p>
-      <div class="tabs set-tabs" id="setTabs" role="group" aria-label="Choose a schedule set to edit"></div>
-      <p class="hint">A set holds one complete week of schedules. Add a set for another person or version, then compare it from the dashboard.</p>
-      <label class="field"><span class="label">Set name</span><input type="text" id="setName" maxlength="40"></label>
-      <div class="btns"><button class="alt" id="deleteSet" type="button">Delete this set</button></div>
+      <p class="label">Schedule groups</p>
+      <div class="tabs set-tabs" id="setTabs" role="group" aria-label="Choose a schedule group to edit"></div>
+      <p class="hint">Keep separate weeks together. Copy a group to start from schedules you already have.</p>
+      <label class="field"><span class="label">Group name</span><input type="text" id="setName" maxlength="40"></label>
+      <details class="advanced-actions group-options">
+        <summary>More group options</summary>
+        <div class="btns"><button class="alt" id="deleteSet" type="button">Delete group</button></div>
+      </details>
     </div>
-    <p class="label section-title">Weekly preview</p>
-    <p class="hint">See which schedule is assigned to each day.</p>
-    <div class="week-overview" id="weekOverview" aria-label="Weekly schedule overview"></div>
+    <details class="week-preview">
+      <summary>Preview the week</summary>
+      <p class="hint">See which schedules are assigned to each day.</p>
+      <div class="week-overview" id="weekOverview" aria-label="Weekly schedule overview"></div>
+    </details>
     <div class="tabs" id="tabs"></div>
     <label class="field"><span class="label">Schedule name</span><input type="text" id="sname" maxlength="40"></label>
-    <p class="label section-title">Runs on</p>
+    <p class="label section-title">Days this schedule runs</p>
     <div class="days" id="days"></div>
     <p class="hint" id="dayhint"></p>
-    <label class="opt pass-default">Passing time between classes (minutes) <input type="number" id="passMin" min="0" max="30" step="1"></label>
-    <p class="hint">Default length for new passing periods. “Add class” also adds one before the new class. Passing periods are their own entries, so each can have its own times and note.</p>
-    <p class="label section-title">Classes and passing periods</p>
+    <label class="opt pass-default">Usual passing time (minutes) <input type="number" id="passMin" min="0" max="30" step="1"></label>
+    <p class="hint">Used when you add a class. You can change each passing period’s times below.</p>
+    <p class="label section-title">Class times</p>
     <div id="rows"></div>
     <p class="err" id="err"></p>
     <div class="btns">
       <button class="alt" id="addRow" type="button">Add class</button>
-      <button class="alt" id="addPass" type="button">Add passing period</button>
-      <button class="alt" id="fillGaps" type="button">Turn gaps into passing periods</button>
-      <button class="alt" id="del" type="button">Delete this schedule</button>
+      <button class="alt" id="addPass" type="button">Add passing time</button>
     </div>
     <p class="hint" id="gapMsg"></p>
 
-    <div class="today">
-      <p class="label section-title">Today only</p>
-      <label class="opt">Use this schedule <select id="today"></select></label>
-      <label class="opt">Shift all periods (minutes, + is later) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
-      <label class="opt">End school early at <input type="time" id="endAt"></label>
-      <p class="hint">Late start? Enter the delay in minutes. Early release? Set the time school ends. These reset tomorrow.</p>
+    <details class="advanced-actions">
+      <summary>More schedule options</summary>
+      <p class="hint">Fill open time between classes or remove this schedule.</p>
+      <div class="btns">
+        <button class="alt" id="fillGaps" type="button">Fill gaps with passing time</button>
+        <button class="alt" id="del" type="button">Delete this schedule</button>
+      </div>
+    </details>
+
+    <details class="today">
+      <summary>Change today’s schedule</summary>
+      <label class="opt">Use a different schedule today <select id="today"></select></label>
+      <label class="opt">Move all class times (minutes) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
+      <label class="opt">End school early <input type="time" id="endAt"></label>
+      <p class="hint">Use a positive number to move times later, or a negative number to move them earlier. These changes clear tomorrow.</p>
       <div class="btns"><button class="alt" id="clearToday" type="button">Clear today’s changes</button></div>
-    </div>
+    </details>
     </div>
 
     <div class="panel" data-tab="theme" hidden>
-    <p class="label section-title">Appearance</p>
+    <p class="label section-title">Light or dark</p>
     <div class="appearance" id="appearance" role="group" aria-label="Appearance">
       <button type="button" data-mode="system" aria-pressed="true"><strong>System</strong><small>Match your device</small></button>
       <button type="button" data-mode="light" aria-pressed="false"><strong>Light</strong><small>Bright and clear</small></button>
       <button type="button" data-mode="dark" aria-pressed="false"><strong>Dark</strong><small>Easy on the eyes</small></button>
     </div>
-    <p class="label section-title">Choose a theme</p>
+    <p class="label section-title">Pick a color theme</p>
     <div id="presets" class="themes"></div>
-    <p class="hint" id="contrastStatus">Text contrast is checked for light and dark appearance.</p>
-    <details class="custom-colors"><summary>Customize colors</summary><div class="pickers" id="pickers"></div></details>
-    <p class="label section-title">Style</p>
-    <div class="opts">
-      <label class="opt">Auto uses, in light mode <select id="autoL"></select></label>
-      <label class="opt">Auto uses, in dark mode <select id="autoD"></select></label>
-      <label class="opt">Font
-        <select id="font"><option value="rounded">Rounded</option><option value="clean">Clean</option><option value="serif">Serif</option><option value="mono">Mono</option></select></label>
-      <label class="opt">Corners
-        <select id="corners"><option value="sharp">Sharp</option><option value="normal">Normal</option><option value="round">Round</option></select></label>
-      <label class="opt">Ring thickness
-        <select id="ringw"><option value="thin">Thin</option><option value="normal">Normal</option><option value="thick">Thick</option></select></label>
-      <label class="opt">Background
-        <select id="bgstyle"><option value="glow">Soft glow</option><option value="flat">Flat</option><option value="gradient">Gradient</option></select></label>
-    </div>
+    <p class="hint" id="contrastStatus">Text stays easy to read across themes.</p>
+    <details class="advanced-options">
+      <summary>More appearance options</summary>
+      <details class="custom-colors"><summary>Choose your own colors</summary><div class="pickers" id="pickers"></div></details>
+      <div class="opts">
+        <label class="opt">Use this theme automatically in light mode <select id="autoL"></select></label>
+        <label class="opt">Use this theme automatically in dark mode <select id="autoD"></select></label>
+        <label class="opt">Font
+          <select id="font"><option value="rounded">Rounded</option><option value="clean">Simple</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
+        <label class="opt">Corner shape
+          <select id="corners"><option value="sharp">Square</option><option value="normal">Soft</option><option value="round">Round</option></select></label>
+        <label class="opt">Progress ring
+          <select id="ringw"><option value="thin">Thin</option><option value="normal">Regular</option><option value="thick">Thick</option></select></label>
+        <label class="opt">Page background
+          <select id="bgstyle"><option value="glow">Soft glow</option><option value="flat">Plain</option><option value="gradient">Color blend</option></select></label>
+      </div>
+    </details>
     </div>
 
     <div class="panel" data-tab="display" hidden>
@@ -597,41 +215,46 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
       <label class="opt">Time format
         <select id="fmt"><option value="12">12-hour</option><option value="24">24-hour</option></select></label>
       <label class="opt">Text size
-        <select id="size"><option value="small">Small</option><option value="normal">Normal</option><option value="large">Large</option></select></label>
-      <label class="opt">Show seconds on the clock <input type="checkbox" id="secs"></label>
-      <label class="opt">Show passing periods in the schedule <input type="checkbox" id="showPass"></label>
-      <label class="opt">Special effects (colors, pulsing, hype near the end) <input type="checkbox" id="fx"></label>
-      <label class="opt">Show the note box <input type="checkbox" id="shNote"></label>
-      <label class="opt">Show percentages <input type="checkbox" id="shPct"></label>
-      <label class="opt">Show the numeric date (like 10/27/2026) <input type="checkbox" id="shNum"></label>
+        <select id="size"><option value="small">Small</option><option value="normal">Regular</option><option value="large">Large</option></select></label>
     </div>
+    <details class="advanced-options">
+      <summary>More display options</summary>
+      <div class="opts">
+        <label class="opt">Show seconds on the clock <input type="checkbox" id="secs"></label>
+        <label class="opt">Show passing times in today’s list <input type="checkbox" id="showPass"></label>
+        <label class="opt">Use extra color and motion near the bell <input type="checkbox" id="fx"></label>
+        <label class="opt">Show the note card <input type="checkbox" id="shNote"></label>
+        <label class="opt">Show progress percentages <input type="checkbox" id="shPct"></label>
+        <label class="opt">Show the date in numbers <input type="checkbox" id="shNum"></label>
+      </div>
+    </details>
     </div>
 
     <div class="panel" data-tab="alerts" hidden>
     <div class="opts">
-      <label class="opt">Warn me before class ends <input type="checkbox" id="alOn"></label>
-      <label class="opt">How early
+      <label class="opt">Remind me before class ends <input type="checkbox" id="alOn"></label>
+      <label class="opt">Remind me this many minutes early
         <select id="alMins"><option value="1">1 minute</option><option value="2">2 minutes</option><option value="3">3 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option></select></label>
       <label class="opt">Play a sound (also at the bell) <input type="checkbox" id="alSound"></label>
     </div>
     <div class="btns"><button class="alt" id="alTest" type="button">Test sound</button></div>
-    <p class="hint">The ring turns orange and flashes. Browsers only allow sound after you’ve tapped the page once, and the page has to stay open.</p>
+    <p class="hint">Keep this page open to get reminders. Your browser may ask you to allow sound.</p>
     </div>
 
     <div class="panel" data-tab="share" hidden>
-    <p class="hint">Share the schedules in the set you are editing. Imports can be added to that set or used to replace its schedules.</p>
-    <label class="opt">Include theme, display and heads-up settings <input type="checkbox" id="shareAll" checked></label>
-    <div class="btns"><button class="alt" id="mkLink" type="button">Copy share link</button></div>
+    <p class="hint">Send a schedule group to someone with a link, or move it between your devices.</p>
+    <label class="opt">Include appearance, display, and reminder choices <input type="checkbox" id="shareAll" checked></label>
+    <div class="btns"><button class="alt" id="mkLink" type="button">Create and copy link</button></div>
     <input type="text" id="linkOut" readonly hidden aria-label="Share link">
-    <label class="field"><span class="label">Import from a link or code</span><input type="text" id="importIn" placeholder="Paste a share link here" autocomplete="off"></label>
-    <div class="btns"><button class="alt" id="doImport" type="button">Review import options</button></div>
+    <label class="field"><span class="label">Add schedules from a link or code</span><input type="text" id="importIn" placeholder="Paste a link or code" autocomplete="off"></label>
+    <div class="btns"><button class="alt" id="doImport" type="button">Continue</button></div>
     <p class="hint" id="shareMsg"></p>
     <div class="backup">
-      <p class="label">Backup</p>
-      <p class="hint">Save a copy of all schedules and settings as a JSON file.</p>
+      <p class="label">Move or save your data</p>
+      <p class="hint">Download a copy of all schedules and settings, or restore one you saved earlier.</p>
       <div class="btns">
-        <button class="alt" id="exportBackup" type="button">Download backup</button>
-        <button class="alt" id="chooseBackup" type="button">Restore backup</button>
+        <button class="alt" id="exportBackup" type="button">Download a copy</button>
+        <button class="alt" id="chooseBackup" type="button">Restore a copy</button>
         <input type="file" id="backupFile" accept="application/json,.json" hidden>
       </div>
       <p class="hint" id="backupMsg" aria-live="polite"></p>
@@ -639,14 +262,14 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
     </div>
 
     <div class="foot">
-      <button class="alt" id="reset" type="button">Reset everything</button>
+      <button class="alt" id="reset" type="button">Reset all schedules and settings</button>
       <button id="done2" type="button">Done</button>
     </div>
   </div>
 </dialog>
 
 <dialog id="keysDlg" aria-labelledby="keysTitle">
-  <div class="dhead"><h2 id="keysTitle">Keyboard shortcuts</h2><button class="alt" id="keysClose" type="button">Done</button></div>
+  <div class="dhead"><h2 id="keysTitle">Quick keyboard controls</h2><button class="alt" id="keysClose" type="button">Done</button></div>
   <div class="dbody shortcut-list">
     <p><kbd>S</kbd> Open settings</p>
     <p><kbd>T</kbd> Jump to today's schedule</p>
@@ -666,1574 +289,7 @@ li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent)
   </div>
 </dialog>
 
-<script>
-/*
-  School Schedule
-  ===============
-  This file is self-contained so it can run as a local page or static site.
-  The script is organized around one settings object: storage loads it,
-  controls edit it, and tick() derives the live dashboard from it.
-*/
-// ---- Defaults and supported appearance options ----
-const DEFAULTS = {
-  sets: [{ id: "set1", name: "My week" }],
-  schedules: [{
-    id: "s1", setId: "set1", name: "Regular day", days: [1, 2, 3, 4, 5],   // 0 = Sunday ... 6 = Saturday
-    passing: 5,                                              // minutes between classes, used when adding a period
-    periods: [
-      { name: "Period 1", start: "08:00", end: "08:50", teacher: "", room: "" },
-      { name: "Period 2", start: "08:55", end: "09:45", teacher: "", room: "" },
-      { name: "Period 3", start: "09:50", end: "10:40", teacher: "", room: "" },
-      { name: "Period 4", start: "10:45", end: "11:35", teacher: "", room: "" },
-      { name: "Lunch",    start: "11:35", end: "12:10", teacher: "", room: "" },
-      { name: "Period 5", start: "12:15", end: "13:05", teacher: "", room: "" },
-      { name: "Period 6", start: "13:10", end: "14:00", teacher: "", room: "" },
-      { name: "Period 7", start: "14:05", end: "14:55", teacher: "", room: "" }
-    ]
-  }],
-  editing: "s1", editingSetId: "set1", activeSetId: "set1", compareSetId: "",
-  override: null,   // { date, id }: use a different schedule for one day
-  adjust: null,     // { date, shift, endAt }: late start / early release for one day
-  theme: { preset: "auto", autoLight: "paper", autoDark: "midnight",
-           mode: "system",
-           custom: { bg: "#eef1f4", card: "#ffffff", ink: "#14213d", hi: "#ffd23f", bar: "#14213d", warn: "#c2410c", go: "#0b8a74", gold: "#d99a00", danger: "#d62828", glow: "#ffd23f" } },
-  use24: false, seconds: true, size: "normal", showPassing: true, effects: true,
-  font: "rounded", corners: "normal", ring: "normal", bgStyle: "glow", showNote: true, showPercent: true, showNumDate: true,
-  alert: { on: true, mins: 5, sound: false }
-};
-// Complete palettes used by the theme cards. Semantic colors (warning, danger,
-// passing and completion) stay distinct from the user-selected accent.
-const PRESETS = {
-  paper:     { label: "Paper", bg: "#eef1f4", card: "#ffffff", ink: "#14213d", hi: "#ffd23f", bar: "#14213d", warn: "#c2410c", go: "#0b8a74", gold: "#d99a00", danger: "#d62828", glow: "#ffd23f" },
-  midnight:  { label: "Midnight", bg: "#10151f", card: "#18202e", ink: "#e8ecf3", hi: "#ffd23f", bar: "#ffd23f", warn: "#ff8a4c", go: "#3ddbc0", gold: "#ffd23f", danger: "#ff6b6b", glow: "#ffd23f" },
-  forest:    { label: "Forest", bg: "#e9f0e6", card: "#f8fbf6", ink: "#1e3a2b", hi: "#9be564", bar: "#2f6b47", warn: "#c2410c", go: "#0e7490", gold: "#b7791f", danger: "#b91c1c", glow: "#9be564" },
-  sunset:    { label: "Sunset", bg: "#fff1e6", card: "#fffaf5", ink: "#4a1f2e", hi: "#ff8a5b", bar: "#b83a5a", warn: "#c2410c", go: "#0f766e", gold: "#b45309", danger: "#be123c", glow: "#ff8a5b" },
-  ocean:     { label: "Ocean", bg: "#e4f1f7", card: "#f6fbfd", ink: "#0b3a52", hi: "#5cc8f2", bar: "#0f6b94", warn: "#c2410c", go: "#0d9488", gold: "#ca8a04", danger: "#c92a2a", glow: "#5cc8f2" },
-  grape:     { label: "Grape", bg: "#1b1328", card: "#261a38", ink: "#efe6ff", hi: "#c792ff", bar: "#c792ff", warn: "#ffa94d", go: "#5eead4", gold: "#ffd866", danger: "#ff6b8b", glow: "#c792ff" },
-  ember:     { label: "Ember", bg: "#1a1210", card: "#261a16", ink: "#f6e9e1", hi: "#ff7a45", bar: "#ff7a45", warn: "#ffb347", go: "#4fd1c5", gold: "#ffd23f", danger: "#ff5252", glow: "#ff7a45" },
-  slate:     { label: "Slate", bg: "#1e2530", card: "#2a3441", ink: "#e6edf5", hi: "#7aa2f7", bar: "#7aa2f7", warn: "#f0a35e", go: "#4fd6be", gold: "#e5c07b", danger: "#f7768e", glow: "#7aa2f7" },
-  sand:      { label: "Sand", bg: "#f3ece0", card: "#fbf7ef", ink: "#3b2f22", hi: "#e3b04b", bar: "#8a5a2b", warn: "#b8470a", go: "#2f7d6d", gold: "#b8860b", danger: "#b3261e", glow: "#e3b04b" },
-  rose:      { label: "Rose", bg: "#fbeff2", card: "#fffafb", ink: "#4a1d2c", hi: "#f78fb3", bar: "#c2185b", warn: "#c2410c", go: "#00897b", gold: "#b7791f", danger: "#c62828", glow: "#f78fb3" },
-  neon:      { label: "Neon", bg: "#0b0b14", card: "#14142a", ink: "#eaeaff", hi: "#00f0ff", bar: "#00f0ff", warn: "#ffb800", go: "#39ff88", gold: "#fff200", danger: "#ff2e63", glow: "#00f0ff" },
-  terminal:  { label: "Terminal", bg: "#07110a", card: "#0d1b11", ink: "#c8ffd4", hi: "#39ff14", bar: "#39ff14", warn: "#ffb000", go: "#00e5ff", gold: "#f5e642", danger: "#ff4d4d", glow: "#39ff14" },
-  mono:      { label: "Mono", bg: "#ffffff", card: "#f2f2f2", ink: "#111111", hi: "#111111", bar: "#111111", warn: "#8a4b00", go: "#005f56", gold: "#6b5200", danger: "#b00020", glow: "#9a9a9a" },
-  candy:     { label: "Candy", bg: "#fdf0fa", card: "#ffffff", ink: "#3d1f4d", hi: "#ffb3e6", bar: "#7c3aed", warn: "#c2410c", go: "#0ea5a4", gold: "#b8860b", danger: "#dc2626", glow: "#ff9de0" },
-  coffee:    { label: "Coffee", bg: "#1c1410", card: "#2a1f19", ink: "#f1e4d6", hi: "#d6a56a", bar: "#d6a56a", warn: "#ff9f43", go: "#6fd6c4", gold: "#f2c14e", danger: "#ff6b5e", glow: "#d6a56a" },
-  arctic:    { label: "Arctic", bg: "#eaf4fb", card: "#ffffff", ink: "#12344d", hi: "#8fd3ff", bar: "#1d6fa5", warn: "#c2410c", go: "#0b9488", gold: "#c28a00", danger: "#c92a2a", glow: "#8fd3ff" }
-};
-// These keys must match the CSS custom properties and the color input IDs.
-const COLORS = [["bg", "Background"], ["card", "Cards"], ["ink", "Text"], ["hi", "Current class"], ["bar", "Progress ring"],
-  ["warn", "Heads-up"], ["go", "Passing time"], ["gold", "Last class and done"], ["danger", "Final minute"], ["glow", "Glow"]];
-const FONTS = {
-  rounded: { label: "Rounded", stack: 'ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif' },
-  clean:   { label: "Clean",   stack: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
-  serif:   { label: "Serif",   stack: '"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif' },
-  mono:    { label: "Mono",    stack: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' }
-};
-const CORNERS = { sharp: ["4px", "3px", "4px"], normal: ["20px", "10px", "12px"], round: ["30px", "18px", "20px"] };
-const RINGS = { thin: 8, normal: 12, thick: 18 };
-const BGS = ["glow", "flat", "gradient"];
-const SIZES = { small: "14px", normal: "16px", large: "19px" };
-const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const ALERT_MINS = [1, 2, 3, 5, 10];
-const KEY = "schoolSchedule.v3";
-const RING = 552.92;
+<script src="app.js" defer></script>
 
-// Small DOM helpers keep the UI-building code concise and consistent.
-const $ = id => document.getElementById(id);
-const clone = o => JSON.parse(JSON.stringify(o));
-const pad = n => String(n).padStart(2, "0");
-const mk = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; };
-const newId = (prefix = "s") => prefix + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-// Local date keys deliberately use local calendar parts; school schedules are
-// interpreted in the student's device timezone, not UTC.
-const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-
-// ---- Schedule parsing, validation, and display helpers ----
-// Times are stored as seconds since midnight while calculations run, then
-// formatted only at the UI boundary. Invalid user-entered times return null.
-const toSec = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 3600 + +m[2] * 60 : null; };
-const fromSec = s => pad(Math.floor(s / 3600) % 24) + ":" + pad(Math.floor(s % 3600 / 60));
-const roomTxt = r => /\d/.test(r) && /^\S{1,6}$/.test(r) ? "Room " + r : r;
-const detail = p => p ? [p.teacher, p.room ? roomTxt(p.room) : ""].filter(Boolean).join(", ") : "";
-const head = p => { const d = detail(p); return d ? "Head to " + d : ""; };
-
-function check(periods) {
-  // Normalize imported and edited entries to one internal shape before use.
-  // Reject overlaps here so every caller (editor, import, and runtime) agrees
-  // on which schedules are safe to display.
-  const list = [];
-  for (const p of periods) {
-    const kind = p.kind === "passing" ? "passing" : "class";
-    const a = toSec(p.start), b = toSec(p.end), name = (p.name || "").trim() || (kind === "passing" ? "Passing time" : "Untitled");
-    if (a == null || b == null) return { ok: false, msg: "Set a start and end time for every period." };
-    if (b <= a) return { ok: false, msg: name + ": the end time must be after the start time." };
-    list.push({ name, start: a, end: b, teacher: (p.teacher || "").trim(), room: (p.room || "").trim(), note: (p.note || "").trim(), kind });
-  }
-  if (!list.length) return { ok: false, msg: "Add at least one class." };
-  if (!list.some(p => p.kind !== "passing")) return { ok: false, msg: "Add at least one class, not just passing periods." };
-  list.sort((x, y) => x.start - y.start);
-  for (let i = 1; i < list.length; i++)
-    if (list[i].start < list[i - 1].end) return { ok: false, msg: list[i - 1].name + " and " + list[i].name + " overlap." };
-  return { ok: true, list };
-}
-
-// Today-only changes: shift every period, and/or cut the day off at a set time
-function applyAdjust(list, d) {
-  // One-day overrides are kept separate from the saved weekly schedule.
-  // Shifting happens before an optional early-release cutoff is applied.
-  const a = settings.adjust;
-  if (!a || a.date !== dayKey(d)) return { list, adjusted: false };
-  let out = list.map(p => ({ ...p, start: p.start + a.shift * 60, end: p.end + a.shift * 60 }));
-  const cut = toSec(a.endAt);
-  if (cut != null) out = out.filter(p => p.start < cut).map(p => ({ ...p, end: Math.min(p.end, cut) }));
-  return { list: out, adjusted: a.shift !== 0 || cut != null };
-}
-
-// ---- Stored state and migration ----
-// Local storage and share links are untrusted input. These cleaners bound text,
-// validate identifiers and times, and restore missing values from DEFAULTS.
-function cleanSchedules(arr) {
-  if (!Array.isArray(arr)) return [];
-  const ids = new Set();
-  const list = arr.filter(x => x && Array.isArray(x.periods) && check(x.periods).ok).map(x => {
-    const id = typeof x.id === "string" && x.id && !ids.has(x.id) ? x.id : newId(); ids.add(id);
-    return {
-      id, name: String(x.name || "Schedule").slice(0, 40),
-      setId: typeof x.setId === "string" ? x.setId : "",
-      passing: Number.isInteger(x.passing) && x.passing >= 0 && x.passing <= 30 ? x.passing : 5,
-      days: (Array.isArray(x.days) ? x.days : []).filter(n => Number.isInteger(n) && n >= 0 && n <= 6),
-      periods: x.periods.map(p => ({
-        name: String(p.name || "").slice(0, 40), start: p.start, end: p.end,
-        teacher: String(p.teacher || "").slice(0, 40), room: String(p.room || "").slice(0, 20),
-        note: String(p.note || "").slice(0, 120), kind: p.kind === "passing" ? "passing" : "class"
-      })).sort((a, b) => (toSec(a.start) ?? 1e9) - (toSec(b.start) ?? 1e9))
-    };
-  });
-  // Schedules may share weekdays. Keep each schedule's valid day assignment
-  // intact so students can compare multiple plans for the same day.
-  return list;
-}
-function cleanSets(arr) {
-  if (!Array.isArray(arr) || !arr.length) return clone(DEFAULTS.sets);
-  const ids = new Set();
-  const sets = arr.filter(item => item && typeof item === "object").map(item => {
-    const id = typeof item.id === "string" && item.id && !ids.has(item.id) ? item.id : newId("set");
-    ids.add(id);
-    return { id, name: String(item.name || "Schedule set").trim().slice(0, 40) || "Schedule set" };
-  });
-  return sets.length ? sets : clone(DEFAULTS.sets);
-}
-function sanitize(o) {
-  // Rebuild rather than mutate the input so obsolete or malformed properties
-  // cannot silently leak into the live settings object.
-  const s = clone(DEFAULTS);
-  s.sets = cleanSets(o.sets);
-  const validSetIds = new Set(s.sets.map(item => item.id));
-  const sch = cleanSchedules(o.schedules);
-  if (sch.length) s.schedules = sch.map(item => ({ ...item, setId: validSetIds.has(item.setId) ? item.setId : s.sets[0].id }));
-  else s.schedules = clone(DEFAULTS.schedules).map(item => ({ ...item, setId: s.sets[0].id }));
-  for (const set of s.sets) if (!s.schedules.some(item => item.setId === set.id)) {
-    const seed = clone(s.schedules[0] || DEFAULTS.schedules[0]);
-    s.schedules.push({ ...seed, id: newId(), setId: set.id, name: "Regular day", days: [] });
-  }
-  if (o.theme) {
-    const t = o.theme.preset;
-    if (t === "auto" || t === "custom" || PRESETS[t]) s.theme.preset = t;
-    if (["system", "light", "dark"].includes(o.theme.mode)) s.theme.mode = o.theme.mode;
-    if (PRESETS[o.theme.autoLight]) s.theme.autoLight = o.theme.autoLight;
-    if (PRESETS[o.theme.autoDark]) s.theme.autoDark = o.theme.autoDark;
-    for (const [k] of COLORS) if (o.theme.custom && /^#[0-9a-f]{6}$/i.test(o.theme.custom[k])) s.theme.custom[k] = o.theme.custom[k].toLowerCase();
-  }
-  if (typeof o.use24 === "boolean") s.use24 = o.use24;
-  if (typeof o.seconds === "boolean") s.seconds = o.seconds;
-  if (typeof o.showPassing === "boolean") s.showPassing = o.showPassing;
-  if (typeof o.effects === "boolean") s.effects = o.effects;
-  if (FONTS[o.font]) s.font = o.font;
-  if (CORNERS[o.corners]) s.corners = o.corners;
-  if (RINGS[o.ring]) s.ring = o.ring;
-  if (BGS.includes(o.bgStyle)) s.bgStyle = o.bgStyle;
-  for (const k of ["showNote", "showPercent", "showNumDate"]) if (typeof o[k] === "boolean") s[k] = o[k];
-  if (SIZES[o.size]) s.size = o.size;
-  if (o.alert && typeof o.alert === "object") {
-    if (typeof o.alert.on === "boolean") s.alert.on = o.alert.on;
-    if (ALERT_MINS.includes(o.alert.mins)) s.alert.mins = o.alert.mins;
-    if (typeof o.alert.sound === "boolean") s.alert.sound = o.alert.sound;
-  }
-  s.editingSetId = validSetIds.has(o.editingSetId) ? o.editingSetId : s.sets[0].id;
-  s.activeSetId = validSetIds.has(o.activeSetId) ? o.activeSetId : s.sets[0].id;
-  s.compareSetId = validSetIds.has(o.compareSetId) && o.compareSetId !== s.activeSetId ? o.compareSetId : "";
-  const editSetSchedule = s.schedules.find(x => x.setId === s.editingSetId) || s.schedules[0];
-  s.editing = s.schedules.some(x => x.id === o.editing && x.setId === s.editingSetId) ? o.editing : editSetSchedule.id;
-  if (o.override && typeof o.override.date === "string" && s.schedules.some(x => x.id === o.override.id)) s.override = { date: o.override.date, id: o.override.id };
-  if (o.adjust && typeof o.adjust.date === "string") {
-    let sh = Math.round(Number(o.adjust.shift)); if (!Number.isFinite(sh)) sh = 0;
-    sh = Math.max(-180, Math.min(300, sh));
-    const ea = toSec(o.adjust.endAt) != null ? o.adjust.endAt : "";
-    if (sh || ea) s.adjust = { date: o.adjust.date, shift: sh, endAt: ea };
-  }
-  return s;
-}
-function load() {
-  // v2 was a single-schedule format. Migrate it once when no v3 data exists;
-  // storage failures should never prevent the dashboard from opening.
-  try {
-    let o = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (!o) { // bring over a single schedule saved by an older version
-      const old = JSON.parse(localStorage.getItem("schoolSchedule.v2") || "null");
-      if (old && Array.isArray(old.periods) && check(old.periods).ok)
-        o = { schedules: [{ id: "s1", name: "Regular day", days: Array.isArray(old.days) ? old.days : [1, 2, 3, 4, 5], periods: old.periods }],
-              theme: old.theme, use24: old.use24, seconds: old.seconds, size: old.size };
-    }
-    if (o) return sanitize(o);
-  } catch (e) {}
-  return clone(DEFAULTS);
-}
-let settings = load();
-// Dashboard selection is session-only: all schedules remain saved, while the
-// student chooses which one to inspect in the main countdown.
-let viewScheduleId = null;
-let compareViewScheduleId = null;
-let lastKey = "", lastListKey = "";
-// Persistence is best-effort: private browsing or quota restrictions must not
-// make normal in-memory editing fail.
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) {} };
-const editingSet = () => settings.sets.find(set => set.id === settings.editingSetId) || settings.sets[0];
-const setLabel = set => {
-  const name = set.name || "Schedule set";
-  const sameName = settings.sets.filter(item => item.name.toLowerCase() === name.toLowerCase());
-  return sameName.length > 1 && sameName.includes(set) ? name + " (" + (sameName.indexOf(set) + 1) + ")" : name;
-};
-const schedulesInSet = (setId = settings.editingSetId) => settings.schedules.filter(s => s.setId === setId);
-const ed = () => settings.schedules.find(s => s.id === settings.editing && s.setId === settings.editingSetId);
-const label = s => {
-  const name = s.name || "Untitled";
-  const matches = settings.schedules.filter(item => (item.name || "Untitled").toLowerCase() === name.toLowerCase());
-  return matches.length > 1 && matches.includes(s) ? name + " (" + (matches.indexOf(s) + 1) + ")" : name;
-};
-
-function activeSchedule(d) {
-  // A dashboard preview and one-day override are only meaningful inside the
-  // selected set; otherwise use that set's first schedule assigned to today.
-  const o = settings.override;
-  const override = o && o.date === dayKey(d) ? settings.schedules.find(x => x.id === o.id && x.setId === settings.activeSetId) : null;
-  const selected = settings.schedules.find(x => x.id === viewScheduleId && x.setId === settings.activeSetId);
-  const sc = selected || override || schedulesForDay(d, settings.activeSetId)[0] || null;
-  return { sc, forced: Boolean(override && sc.id === override.id) };
-}
-
-// Schedules assigned to a weekday appear together in previews and set
-// comparisons. More than one schedule may be assigned to any weekday.
-function schedulesForDay(d, setId = settings.activeSetId) { return settings.schedules.filter(sc => sc.setId === setId && sc.days.includes(d.getDay())); }
-
-let dashboardDateKey = "";
-function buildDashboardControls() {
-  const today = new Date(), todayKey = dayKey(today);
-  if (!settings.sets.some(set => set.id === settings.activeSetId)) settings.activeSetId = settings.sets[0].id;
-  if (settings.compareSetId === settings.activeSetId || !settings.sets.some(set => set.id === settings.compareSetId)) settings.compareSetId = "";
-
-  const activeSelect = $("activeSetSelect"), compareSelect = $("compareSetSelect");
-  activeSelect.textContent = "";
-  settings.sets.forEach(set => activeSelect.append(mk("option", { value: set.id, textContent: setLabel(set) })));
-  activeSelect.value = settings.activeSetId;
-  compareSelect.textContent = "";
-  compareSelect.append(mk("option", { value: "", textContent: "Off" }));
-  settings.sets.filter(set => set.id !== settings.activeSetId)
-    .forEach(set => compareSelect.append(mk("option", { value: set.id, textContent: setLabel(set) })));
-  compareSelect.value = settings.compareSetId;
-  const activeSchedules = schedulesInSet(settings.activeSetId);
-  if (dashboardDateKey && dashboardDateKey !== todayKey &&
-      !schedulesForDay(today, settings.activeSetId).some(sc => sc.id === viewScheduleId)) viewScheduleId = null;
-  dashboardDateKey = todayKey;
-  if (!activeSchedules.some(sc => sc.id === viewScheduleId)) {
-    const override = settings.override && settings.override.date === todayKey &&
-      activeSchedules.some(sc => sc.id === settings.override.id) ? settings.override.id : null;
-    viewScheduleId = override || (schedulesForDay(today, settings.activeSetId)[0] || activeSchedules[0] || {}).id || null;
-  }
-  const activeRingSelect = $("activeRingSchedule");
-  activeRingSelect.textContent = "";
-  activeSchedules.forEach(sc => activeRingSelect.append(mk("option", { value: sc.id, textContent: label(sc) })));
-  activeRingSelect.value = viewScheduleId || "";
-  activeRingSelect.onchange = e => {
-    viewScheduleId = e.target.value;
-    animateRingChange(activeRingSelect);
-    save(); lastKey = ""; tick();
-  };
-
-  const compareSchedules = schedulesInSet(settings.compareSetId);
-  const todaySchedules = schedulesForDay(today, settings.compareSetId);
-  if (!compareSchedules.some(sc => sc.id === compareViewScheduleId))
-    compareViewScheduleId = (todaySchedules[0] || compareSchedules[0] || {}).id || null;
-  const compareRingSelect = $("compareRingSchedule");
-  compareRingSelect.textContent = "";
-  compareSchedules.forEach(sc => compareRingSelect.append(mk("option", { value: sc.id, textContent: label(sc) })));
-  compareRingSelect.value = compareViewScheduleId || "";
-  compareRingSelect.onchange = e => {
-    compareViewScheduleId = e.target.value;
-    animateRingChange(compareRingSelect);
-    tick();
-  };
-
-  $("compareRingPanel").hidden = !settings.compareSetId;
-  $("ringPair").classList.toggle("is-comparing", Boolean(settings.compareSetId));
-  $("main").dataset.comparing = String(Boolean(settings.compareSetId));
-  $("hero").classList.toggle("compare-mode", Boolean(settings.compareSetId));
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
-  $("compareRingLabel").textContent = settings.sets.find(set => set.id === settings.compareSetId)
-    ? setLabel(settings.sets.find(set => set.id === settings.compareSetId)) : "Compared set";
-}
-// Give ring content a quick, calm fade when the selected timetable changes.
-// The progress stroke already has its own transition; this adds motion to the
-// text as well without forcing users who request reduced motion to see it.
-function animateRingChange(select) {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const center = select.closest(".ring-panel")?.querySelector(".center");
-  if (center && typeof center.animate === "function") center.animate(
-    [{ opacity: .55, transform: "translateY(5px) scale(.985)" }, { opacity: 1, transform: "translateY(0) scale(1)" }],
-    { duration: 260, easing: "cubic-bezier(.2,.7,.2,1)" });
-}
-function syncEditorScheduleToDashboard(schedule) {
-  if (!schedule) return;
-  if (schedule.setId === settings.activeSetId) {
-    viewScheduleId = schedule.id;
-    animateRingChange($("activeRingSchedule"));
-  }
-  if (schedule.setId === settings.compareSetId) {
-    compareViewScheduleId = schedule.id;
-    animateRingChange($("compareRingSchedule"));
-  }
-}
-function setDashboardSet(id) {
-  if (!settings.sets.some(set => set.id === id)) return;
-  settings.activeSetId = id;
-  if (settings.compareSetId === id) settings.compareSetId = "";
-  viewScheduleId = null;
-  buildDashboardControls();
-  save(); lastKey = ""; tick();
-}
-$("activeSetSelect").onchange = e => setDashboardSet(e.target.value);
-$("compareSetSelect").onchange = e => {
-  settings.compareSetId = e.target.value;
-  compareViewScheduleId = null;
-  save(); comparisonRenderKey = ""; buildDashboardControls(); tick();
-};
-
-// ---- Theme resolution and application ----
-// Presets provide accents; appearance mode supplies the neutral light/dark
-// surfaces. This separation lets every palette support both appearances.
-function resolved() {
-  // Auto picks its configured palette from the operating-system preference;
-  // the separate mode setting controls whether neutral surfaces are light/dark.
-  const t = settings.theme;
-  let c = t.preset === "custom" ? t.custom : t.preset === "auto"
-    ? PRESETS[matchMedia("(prefers-color-scheme: dark)").matches ? t.autoDark : t.autoLight]
-    : PRESETS[t.preset];
-  const dark = t.mode === "dark" || (t.mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  const surfaces = dark ? ["#10151f", "#18202e"] : ["#f4f6f8", "#ffffff"];
-  return { ...c, bg: surfaces[0], card: surfaces[1], ink: bestTextColor(c.ink, surfaces) };
-}
-function lum(hex) {
-  // Convert sRGB channels to relative luminance for contrast decisions below.
-  const c = [1, 3, 5].map(i => { const v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
-  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-}
-function autoChip() {
-  const L = PRESETS[settings.theme.autoLight], D = PRESETS[settings.theme.autoDark];
-  return "linear-gradient(90deg," + L.bg + " 25%," + L.hi + " 25% 50%," + D.bg + " 50% 75%," + D.hi + " 75%)";
-}
-// Check the chosen ink against both large neutral surfaces. If a palette's ink
-// misses WCAG AA's 4.5:1 text target, select the best of its own ink, near-black,
-// or white. This keeps custom palettes legible without changing their accents.
-function bestTextColor(preferred, surfaces) {
-  return [preferred, "#111111", "#ffffff"].reduce((best, candidate) => {
-    const score = Math.min(...surfaces.map(surface => ratio(candidate, surface)));
-    const bestScore = Math.min(...surfaces.map(surface => ratio(best, surface)));
-    return score > bestScore ? candidate : best;
-  });
-}
-function auditThemeContrast(palette) {
-  const modes = [["#f4f6f8", "#ffffff"], ["#10151f", "#18202e"]];
-  const fills = [palette.hi, palette.warn, palette.go, palette.gold, palette.danger];
-  return modes.every(surfaces => {
-    const text = bestTextColor(palette.ink, surfaces);
-    const bodyPasses = Math.min(...surfaces.map(surface => ratio(text, surface))) >= 4.5;
-    const fillsPass = fills.every(fill => ratio(pickOn(fill, { ink: text, card: surfaces[1], bg: surfaces[0] }), fill) >= 4.5);
-    return bodyPasses && fillsPass;
-  });
-}
-function buildPresets() {
-  // Recreate the swatch cards from settings so the selected card and previews
-  // always reflect the current palette, including custom colors.
-  const box = $("presets"); box.textContent = "";
-  const items = [["auto", "Auto"], ...Object.keys(PRESETS).map(k => [k, PRESETS[k].label]), ["custom", "Custom"]];
-  for (const [k, name] of items) {
-    const c = k === "auto" ? null : k === "custom" ? settings.theme.custom : PRESETS[k];
-    const colors = c || PRESETS[settings.theme.autoLight];
-    const preview = mk("span", { className: "theme-preview" });
-    preview.style.background = colors.bg;
-    preview.append(mk("i"), mk("i"), mk("i"));
-    preview.children[0].style.background = colors.card;
-    preview.children[1].style.background = colors.hi;
-    preview.children[2].style.background = colors.bar;
-    if (k === "auto") preview.style.background = autoChip();
-    const badge = mk("small", { textContent: auditThemeContrast(colors) ? "AA text contrast" : "Contrast needs review" });
-    const b = mk("button", { type: "button", className: "theme-card" }, preview, mk("strong", { textContent: name }), badge);
-    b.setAttribute("aria-pressed", String(settings.theme.preset === k));
-    b.onclick = () => { settings.theme.preset = k; save(); applyTheme(); };
-    box.append(b);
-  }
-  $("contrastStatus").textContent = "Built-in themes checked in light and dark modes. Custom text switches to a high-contrast color when needed.";
-  $("appearance").querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(settings.theme.mode === b.dataset.mode)));
-}
-// Text drawn on top of a palette color uses whichever palette color reads best on it
-function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
-function pickOn(color, c) {
-  // Include dark/light endpoints so colored badges and selected controls get
-  // the strongest available foreground even for unusually bright accents.
-  return [c.ink, c.card, c.bg, "#111111", "#ffffff"].reduce((best, t) => ratio(color, t) > ratio(color, best) ? t : best);
-}
-function applyTheme() {
-  // Resolve contrast-aware text colors before applying the palette. The page's
-  // semantic variables remain centralized in CSS rather than inline styles.
-  const c = resolved(), r = document.documentElement.style;
-  for (const [k] of COLORS) r.setProperty("--" + k, c[k]);
-  r.setProperty("--hi-ink", pickOn(c.hi, c));
-  r.setProperty("--on-warn", pickOn(c.warn, c));
-  r.setProperty("--on-danger", pickOn(c.danger, c));
-  r.setProperty("--scrim", lum(c.ink) < lum(c.bg) ? c.ink : c.bg);
-  r.colorScheme = lum(c.bg) < 0.3 ? "dark" : "light";
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", c.bg);
-  buildPresets();
-  for (const [k] of COLORS) { const i = $("c_" + k); if (i && i.value !== c[k]) i.value = c[k]; }
-}
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  // Re-resolve when the OS appearance changes, but preserve explicit user mode.
-  if (settings.theme.mode === "system" || settings.theme.preset === "auto") applyTheme();
-});
-$("appearance").addEventListener("click", e => {
-  const b = e.target.closest("[data-mode]");
-  if (!b) return;
-  settings.theme.mode = b.dataset.mode; save(); applyTheme();
-});
-
-// ---- Display preferences and time formatting ----
-function applyLook() {
-  // Convert saved display choices into CSS variables and root state flags.
-  const root = document.documentElement, st = root.style;
-  st.fontSize = SIZES[settings.size];
-  st.setProperty("--font", FONTS[settings.font].stack);
-  const [rc, rm, rs] = CORNERS[settings.corners];
-  st.setProperty("--rc", rc); st.setProperty("--rm", rm); st.setProperty("--rs", rs);
-  st.setProperty("--ringw", RINGS[settings.ring]);
-  root.dataset.bg = settings.bgStyle;
-  root.dataset.note = settings.showNote ? "on" : "off";
-  root.dataset.pct = settings.showPercent ? "on" : "off";
-  root.dataset.numdate = settings.showNumDate ? "on" : "off";
-}
-function applyDisplay() {
-  applyLook();
-  lastKey = ""; tick();
-}
-function fmtClock(s) {
-  // Schedule times have no date component; formatting uses the selected 12/24h
-  // preference and the same helper is used for all periods and countdown labels.
-  const h = Math.floor(s / 3600) % 24, m = Math.floor(s % 3600 / 60);
-  if (settings.use24) return pad(h) + ":" + pad(m);
-  return ((h + 11) % 12 + 1) + ":" + pad(m) + (h < 12 ? " AM" : " PM");
-}
-function fmtNow(d) {
-  const h = d.getHours(), m = pad(d.getMinutes()), s = settings.seconds ? ":" + pad(d.getSeconds()) : "";
-  return settings.use24 ? pad(h) + ":" + m + s : ((h + 11) % 12 + 1) + ":" + m + s + (h < 12 ? " AM" : " PM");
-}
-const countdown = s => {
-  // Ceil prevents the display from showing zero a fraction of a second early.
-  s = Math.max(0, Math.ceil(s));
-  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
-  return h ? h + ":" + pad(m) + ":" + pad(sec) : pad(m) + ":" + pad(sec);
-};
-const words = s => {
-  s = Math.max(0, Math.round(s / 60));
-  const h = Math.floor(s / 60), m = s % 60;
-  return h ? h + " hr " + m + " min" : m + " min";
-};
-
-// ---- Sound, alerts, and celebration effects ----
-// Audio is created only after a user gesture because browsers block autoplay.
-let ac = null;
-function audio() {
-  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {}
-  return ac;
-}
-function beep(times, freq) {
-  // Build short oscillator tones directly with Web Audio; no audio asset is
-  // required, and each repeated tone begins after the previous one ends.
-  const c = audio(); if (!c) return;
-  let t = c.currentTime;
-  for (let i = 0; i < times; i++) {
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = "sine"; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-    o.connect(g); g.connect(c.destination);
-    o.start(t); o.stop(t + 0.3);
-    t += 0.38;
-  }
-}
-const bell = () => beep(3, 660);
-function flashHero() {
-  // Restart the CSS animation by removing and re-adding its class in one frame.
-  const h = $("hero");
-  h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash");
-}
-function fireAlert() { flashHero(); if (settings.alert.sound) beep(2, 880); }
-function confetti() {
-  // Confetti is decorative only and is skipped by tick() for reduced-motion
-  // users. Its container is cleared after the longest piece has fallen.
-  const box = $("confetti"); box.textContent = "";
-  const cols = ["--hi", "--bar", "--warn", "--go", "--gold", "--danger", "--glow"];
-  for (let i = 0; i < 34; i++) {
-    const c = mk("span");
-    c.style.left = Math.random() * 100 + "%";
-    c.style.background = "var(" + cols[i % cols.length] + ")";
-    c.style.setProperty("--dx", (Math.random() * 120 - 60) + "px");
-    c.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
-    c.style.animationDelay = Math.random() * 0.8 + "s";
-    c.style.animationDuration = (2.4 + Math.random() * 1.6) + "s";
-    box.append(c);
-  }
-  setTimeout(() => { box.textContent = ""; }, 6000);
-}
-$("hero").addEventListener("animationend", e => { if (e.animationName === "flash") e.currentTarget.classList.remove("flash"); });
-// Browsers only let a page make sound after a tap, so unlock audio on the first one
-addEventListener("pointerdown", () => audio(), { once: true });
-addEventListener("keydown", () => audio(), { once: true });
-
-// ---- Dashboard rendering ----
-function renderList(daySchedules, d, now) {
-  // Render every schedule assigned to today as its own clearly labeled group.
-  // The ring can still preview one schedule; the day list should not hide the
-  // other schedules merely because a single ring preview is selected.
-  const ol = $("list"); ol.textContent = "";
-  if (!daySchedules.length) {
-    ol.append(mk("li", { className: "empty", textContent: "No schedule runs today. Pick days in settings." }));
-    return;
-  }
-  const span = (a, b) => fmtClock(a) + " – " + fmtClock(b);
-  daySchedules.forEach(schedule => {
-    const checked = check(schedule.periods);
-    const adjusted = checked.ok ? applyAdjust(checked.list, d).list : null;
-    const periods = adjusted && adjusted.length ? adjusted : null;
-    if (daySchedules.length > 1) {
-      ol.append(mk("li", { className: "schedule-heading", textContent: schedule.name || "Untitled schedule" }));
-    }
-    if (!periods) {
-      ol.append(mk("li", { className: "empty", textContent: checked.ok ? "No classes in this schedule." : "This schedule needs attention: " + checked.msg }));
-      return;
-    }
-    const current = periods.findIndex(period => now >= period.start && now < period.end);
-    periods.forEach((p, i) => {
-      const prev = periods[i - 1];
-      // A gap with no explicit passing entry is still useful to show as passing.
-      if (settings.showPassing && prev && p.start > prev.end) {
-        const mins = Math.round((p.start - prev.end) / 60), isCur = now >= prev.end && now < p.start;
-        ol.append(mk("li", { className: "pass" + (isCur ? " cur" : now >= p.start ? " done" : "") },
-          mk("span", { textContent: "Passing time (" + mins + " min)" }),
-          mk("span", { className: "t", textContent: span(prev.end, p.start) })));
-      }
-      if (p.kind === "passing") {
-        if (settings.showPassing) ol.append(mk("li", { className: "pass" + (i === current ? " cur" : now >= p.end ? " done" : "") },
-          mk("span", { textContent: p.name + " (" + Math.round((p.end - p.start) / 60) + " min)" }),
-          mk("span", { className: "t", textContent: span(p.start, p.end) })));
-        return;
-      }
-      const left = mk("span", {}, mk("span", { className: "nm", textContent: p.name }));
-      const description = detail(p);
-      if (description) left.append(mk("span", { className: "dt", textContent: description }));
-      ol.append(mk("li", { className: i === current ? "cur" : now >= p.end ? "done" : "" },
-        left,
-        mk("span", { className: "t", textContent: span(p.start, p.end) })));
-    });
-  });
-}
-
-let watch = null, warnedFor = null, dangerFor = null, firstTick = true, prevMode = "";
-const clamp01 = x => Math.max(0, Math.min(1, x));
-// Calculate the selected schedule's live class state. The same result powers
-// the dashboard status and every matching row in the weekly set comparison.
-function scheduleSnapshot(sc, d, now) {
-  const checked = check(sc.periods);
-  if (!checked.ok) return { status: "Schedule needs attention: " + checked.msg, progress: 0, count: "--:--", unit: "Needs attention" };
-  const periods = applyAdjust(checked.list, d).list;
-  const classes = periods.filter(period => period.kind !== "passing");
-  if (!classes.length) return { status: "No classes", progress: 0, count: "--:--", unit: "No classes" };
-  const current = periods.find(period => now >= period.start && now < period.end);
-  const first = classes[0], last = classes[classes.length - 1];
-  if (now < first.start) return { status: "Starts in " + countdown(first.start - now) + " · " + first.name, progress: 0, count: countdown(first.start - now), unit: "until first bell" };
-  if (now >= last.end) return { status: "Finished for today", progress: 100, count: "00:00", unit: "School is out" };
-  if (current) {
-    const progress = (now - current.start) / (current.end - current.start) * 100;
-    if (current.kind !== "passing") return { status: "In " + current.name + " · " + countdown(current.end - now) + " left", progress, count: countdown(current.end - now), unit: "left in " + current.name };
-    const nextClass = classes.find(period => period.start >= current.end);
-    return { status: "Passing · " + countdown(current.end - now) + (nextClass ? " until " + nextClass.name : " left"), progress, count: countdown(current.end - now), unit: nextClass ? "until " + nextClass.name : "passing time" };
-  }
-  const next = classes.find(period => period.start > now);
-  const previous = [...classes].reverse().find(period => period.end <= now);
-  const progress = previous && next ? (now - previous.end) / (next.start - previous.end) * 100 : 0;
-  if (next) return { status: "Passing · " + countdown(next.start - now) + " until " + next.name, progress, count: countdown(next.start - now), unit: "until " + next.name };
-  return { status: "School day in progress", progress: 0, count: "--:--", unit: "In a gap" };
-}
-
-let comparisonRenderKey = "", selectedComparisonRenderKey = "";
-function dayDateInCurrentWeek(index, today) {
-  const date = new Date(today);
-  date.setDate(today.getDate() + index - today.getDay());
-  return date;
-}
-function buildSetComparison(today) {
-  const root = $("weekComparison"); root.textContent = "";
-  const active = settings.sets.find(set => set.id === settings.activeSetId);
-  const compare = settings.sets.find(set => set.id === settings.compareSetId);
-  if (!active || !compare) return;
-  $("comparisonTitle").textContent = "Comparing " + setLabel(active) + " and " + setLabel(compare);
-  $("comparisonHint").textContent = "Open a weekday to browse every schedule assigned to both sets.";
-  DAYNAMES.forEach((dayName, dayIndex) => {
-    const date = dayDateInCurrentWeek(dayIndex, today), isToday = dayIndex === today.getDay();
-    const details = mk("details", { className: "compare-day" });
-    details.open = isToday;
-    details.dataset.dayIndex = dayIndex;
-    details.dataset.today = String(isToday);
-    const summary = mk("summary", { textContent: dayName + (isToday ? " · Today" : "") });
-    details.append(summary);
-    const grid = mk("div", { className: "compare-day-grid" });
-    for (const set of [active, compare]) {
-      const column = mk("section", { className: "compare-set-column" }, mk("h4", { textContent: setLabel(set) }));
-      const schedules = schedulesForDay(date, set.id);
-      if (!schedules.length) column.append(mk("p", { className: "compare-empty", textContent: "No schedules assigned." }));
-      schedules.forEach(sc => {
-        const card = mk("article", { className: "compare-schedule" });
-        card.dataset.scheduleId = sc.id;
-        card.dataset.setId = set.id;
-        card.append(mk("strong", { textContent: label(sc) }));
-        if (isToday) {
-          const status = mk("span", { className: "compare-live", textContent: "" });
-          status.dataset.scheduleId = sc.id;
-          card.append(status);
-        }
-        const list = mk("ol", { className: "compare-periods" });
-        const checked = check(sc.periods);
-        const shown = checked.ok ? applyAdjust(checked.list, date).list : [];
-        shown.forEach(period => {
-          const meta = [detail(period), period.note].filter(Boolean).join(" · ");
-          const row = mk("li", {},
-            mk("span", { className: "period-time", textContent: fmtClock(period.start) + "–" + fmtClock(period.end) }),
-            mk("span", { className: "period-name", textContent: period.name }),
-            mk("span", { className: "period-meta", textContent: meta }));
-          row.dataset.start = period.start; row.dataset.end = period.end;
-          list.append(row);
-        });
-        card.append(list);
-        column.append(card);
-      });
-      grid.append(column);
-    }
-    details.append(grid);
-    root.append(details);
-  });
-}
-function buildSelectedScheduleComparison(today) {
-  const root = $("selectedScheduleGrid");
-  root.textContent = "";
-  const active = settings.sets.find(set => set.id === settings.activeSetId);
-  const compare = settings.sets.find(set => set.id === settings.compareSetId);
-  if (!active || !compare) return;
-  $("selectedScheduleTitle").textContent = "Selected schedules · " + DAYNAMES[today.getDay()];
-  for (const [set, selectedId] of [[active, viewScheduleId], [compare, compareViewScheduleId]]) {
-    const column = mk("section", { className: "compare-set-column" }, mk("h4", { textContent: setLabel(set) }));
-    const schedule = settings.schedules.find(item => item.id === selectedId && item.setId === set.id);
-    if (!schedule) {
-      column.append(mk("p", { className: "compare-empty", textContent: "No schedule selected." }));
-      root.append(column);
-      continue;
-    }
-    const card = mk("article", { className: "selected-schedule-card is-switching" });
-    card.dataset.scheduleId = schedule.id;
-    card.append(mk("strong", { textContent: label(schedule) }));
-    if (!schedule.days.includes(today.getDay()))
-      card.append(mk("p", { className: "selected-preview-note", textContent: "Preview · not assigned to today" }));
-    const status = mk("span", { className: "compare-live selected-live", textContent: "" });
-    status.dataset.scheduleId = schedule.id;
-    status.dataset.preview = String(!schedule.days.includes(today.getDay()));
-    card.append(status);
-    const checked = check(schedule.periods);
-    const periods = mk("ol", { className: "compare-periods" });
-    if (checked.ok) applyAdjust(checked.list, today).list.forEach(period => {
-      const meta = [detail(period), period.note].filter(Boolean).join(" · ");
-      const row = mk("li", {},
-        mk("span", { className: "period-time", textContent: fmtClock(period.start) + "–" + fmtClock(period.end) }),
-        mk("span", { className: "period-name", textContent: period.name }),
-        mk("span", { className: "period-meta", textContent: meta }));
-      row.dataset.start = period.start; row.dataset.end = period.end;
-      periods.append(row);
-    });
-    else periods.append(mk("li", { className: "compare-empty", textContent: "Schedule needs attention: " + checked.msg }));
-    card.append(periods);
-    column.append(card);
-    root.append(column);
-  }
-}
-function renderSelectedScheduleComparison(today, now) {
-  const key = JSON.stringify([dayKey(today), settings.activeSetId, settings.compareSetId,
-    viewScheduleId, compareViewScheduleId, settings.use24, settings.schedules, settings.adjust]);
-  if (key !== selectedComparisonRenderKey) {
-    buildSelectedScheduleComparison(today);
-    selectedComparisonRenderKey = key;
-  }
-  document.querySelectorAll(".selected-live[data-schedule-id]").forEach(status => {
-    const schedule = settings.schedules.find(item => item.id === status.dataset.scheduleId);
-    if (schedule) status.textContent = (status.dataset.preview === "true" ? "Preview · " : "") + scheduleSnapshot(schedule, today, now).status;
-  });
-  document.querySelectorAll(".selected-schedule-card .compare-periods").forEach(list => {
-    list.querySelectorAll("li[data-start]").forEach(row => {
-      row.classList.toggle("current", now >= Number(row.dataset.start) && now < Number(row.dataset.end));
-    });
-  });
-}
-function updateSetComparisonLive(today, now) {
-  document.querySelectorAll(".compare-schedule[data-schedule-id]").forEach(card => {
-    const selectedId = card.dataset.setId === settings.activeSetId ? viewScheduleId : compareViewScheduleId;
-    card.classList.toggle("ring-selected", card.dataset.scheduleId === selectedId);
-  });
-  document.querySelectorAll(".compare-live[data-schedule-id]").forEach(status => {
-    const sc = settings.schedules.find(schedule => schedule.id === status.dataset.scheduleId);
-    if (sc) status.textContent = scheduleSnapshot(sc, today, now).status;
-  });
-  document.querySelectorAll(".compare-day[open] .compare-periods").forEach(list => {
-    const isToday = list.closest(".compare-day").dataset.today === "true";
-    list.querySelectorAll("li").forEach(row => {
-      const current = isToday && now >= Number(row.dataset.start) && now < Number(row.dataset.end);
-      row.classList.toggle("current", current);
-    });
-  });
-}
-function updateComparisonRings(today, now, activeSchedule) {
-  const comparing = Boolean(settings.compareSetId && settings.compareSetId !== settings.activeSetId);
-  $("ringPair").classList.toggle("is-comparing", comparing);
-  $("compareRingPanel").hidden = !comparing;
-  $("main").dataset.comparing = String(comparing);
-  $("hero").classList.toggle("compare-mode", comparing);
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
-  const active = activeSchedule || schedulesForDay(today, settings.activeSetId)[0];
-  if (!comparing) { $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId)); return; }
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
-  if (active) {
-    const own = scheduleSnapshot(active, today, now);
-    $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, own.progress || 0)) / 100);
-  }
-  const comparedSet = settings.sets.find(set => set.id === settings.compareSetId);
-  const compared = settings.schedules.find(schedule => schedule.id === compareViewScheduleId && schedule.setId === settings.compareSetId);
-  $("compareRingLabel").textContent = comparedSet ? setLabel(comparedSet) : "Compared set";
-  if (!compared) {
-    $("compareRingCount").textContent = "--:--";
-    $("compareRingUnit").textContent = "No schedule";
-    $("compareRingPct").textContent = "";
-    $("compareRing").style.strokeDashoffset = RING;
-    return;
-  }
-  const snapshot = scheduleSnapshot(compared, today, now);
-  $("compareRingCount").textContent = snapshot.count || "--:--";
-  $("compareRingUnit").textContent = snapshot.unit || snapshot.status;
-  $("compareRingPct").textContent = snapshot.progress == null ? "" : Math.floor(snapshot.progress) + "% through period";
-  $("compareRing").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, snapshot.progress || 0)) / 100);
-}
-function renderSetComparison(today, now) {
-  const panel = $("comparison");
-  const show = settings.compareSetId && settings.compareSetId !== settings.activeSetId;
-  panel.hidden = !show;
-  if (!show) { comparisonRenderKey = ""; selectedComparisonRenderKey = ""; return; }
-  const key = JSON.stringify([dayKey(today), settings.activeSetId, settings.compareSetId, settings.use24, settings.sets,
-    settings.schedules, settings.adjust]);
-  if (key !== comparisonRenderKey) { buildSetComparison(today); comparisonRenderKey = key; }
-  renderSelectedScheduleComparison(today, now);
-  updateSetComparisonLive(today, now);
-}
-
-function tick() {
-  // The single clock loop derives today's active schedule, current period,
-  // countdown, alerts, progress ring, and page title from the current time.
-  const d = new Date();
-  if (dayKey(d) !== weekOverviewDate) { renderWeekOverview(); buildDashboardControls(); }
-  const now = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-  $("date").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  $("dnum").textContent = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
-  $("clock").textContent = fmtNow(d);
-
-  const { sc, forced } = activeSchedule(d);
-  renderSetComparison(d, now);
-  const assignedToday = schedulesForDay(d, settings.activeSetId);
-  // The ring can preview one schedule, but the normal day list includes every
-  // schedule assigned to today. If none are assigned, keep the preview useful.
-  const listSchedules = assignedToday.length ? assignedToday : (sc ? [sc] : []);
-  $("scheduleTitle").textContent = assignedToday.length > 1 ? "Today’s schedules" : sc ? label(sc) + " schedule" : "Today’s schedule";
-  const res = sc ? check(sc.periods) : null;
-  let P = res && res.ok ? res.list : null, adjusted = false;
-  if (P) { const r = applyAdjust(P, d); P = r.list.length ? r.list : null; adjusted = r.adjusted; }
-  const C = P ? P.filter(p => p.kind !== "passing") : [];   // classes only
-  if (!C.length) P = null;
-  const pill = $("pill");
-  const previewing = Boolean(sc && !sc.days.includes(d.getDay()));
-  pill.hidden = !(P && (schedulesInSet(settings.activeSetId).length > 1 || forced || adjusted || previewing));
-  if (P) {
-    const notes = [];
-    if (forced) notes.push("today only");
-    if (adjusted) notes.push("adjusted");
-    if (previewing) notes.push("preview");
-    pill.textContent = label(sc) + (notes.length ? " (" + notes.join(", ") + ")" : "");
-  }
-
-  // These output fields are assembled by the state branches below, then written
-  // to the DOM once at the end of the tick to keep rendering easy to follow.
-  const fx = settings.effects;
-  let nowTxt, count, unit = "", sub, pct = 0, sLeft = "--", sPct = 0, cur = -1, key,
-      pctTxt = "", detTxt = "", nextLine = "", noteTxt = "", inClass = false,
-      mode = "off", tone = "", level = "", badge = "", badgeKind = "info", hype = 0, leftSec = -1, dk = "";
-
-  if (!P) {
-    nowTxt = "No school today"; count = "--:--"; sub = "Enjoy it."; key = "none";
-    if (fx) { tone = "off"; badge = "Day off"; }
-  } else {
-    const first = C[0], last = C[C.length - 1], dayLen = last.end - first.start;
-    cur = P.findIndex(p => now >= p.start && now < p.end);
-    const item = cur >= 0 ? P[cur] : null;
-    const nextClass = from => C.find(p => p.start >= from);
-    key = sc.id + "|" + cur + "|" + (now >= last.end) + "|" + (now < first.start) + "|" + adjusted;
-    // Select one of three day phases. Passing periods and unlisted gaps share
-    // the same countdown mode, while class mode can trigger end-of-class alerts.
-    if (now < first.start) {
-      mode = "before";
-      const lb = first.start - now;
-      nowTxt = "School hasn’t started"; count = countdown(lb); unit = "until first bell";
-      sub = first.name + " starts at " + fmtClock(first.start);
-      sLeft = words(dayLen); detTxt = head(first); noteTxt = first.note;
-      if (fx) {
-        tone = "dawn"; hype = clamp01(1 - lb / 300) * 0.6; dk = "before";
-        if (lb <= 60) { level = "danger"; badge = "First bell in under a minute"; badgeKind = "danger"; }
-        else if (lb <= 300) badge = "First bell soon";
-      }
-    } else if (now >= last.end) {
-      mode = "out";
-      nowTxt = "School’s out"; count = "00:00"; unit = "see you tomorrow"; sub = "The last bell rang at " + fmtClock(last.end);
-      sLeft = "0 min"; sPct = 100; pct = 100;
-      if (fx) { tone = "gold"; hype = 0.5; badge = "School’s out!"; }
-    } else {
-      leftSec = last.end - now;
-      sLeft = words(leftSec);
-      sPct = (now - first.start) / dayLen * 100;
-      const hS = fx ? clamp01(1 - leftSec / 3600) : 0;   // builds over the last hour of school
-      if (item && item.kind !== "passing") {
-        mode = "class"; inClass = true;
-        const p = item, nx = nextClass(p.end), left = p.end - now, id = sc.id + "|" + cur + "|" + dayKey(d);
-        const lastClass = !nx, warnNow = settings.alert.on && left <= settings.alert.mins * 60;
-        nowTxt = p.name; count = countdown(left); unit = "left in class";
-        sub = "Ends at " + fmtClock(p.end);
-        pct = (now - p.start) / (p.end - p.start) * 100;
-        pctTxt = Math.floor(pct) + "% through class";
-        detTxt = detail(p); noteTxt = p.note;
-        nextLine = nx ? "Next: " + nx.name + " at " + fmtClock(nx.start) + (detail(nx) ? " (" + detail(nx) + ")" : "") : "Last class of the day";
-        level = fx && left <= 60 ? "danger" : warnNow ? "warn" : "";
-        if (fx) { tone = lastClass ? "gold" : ""; hype = Math.max(clamp01(1 - left / 300) * 0.75, hS * (lastClass ? 1 : 0.85)); }
-        if (level === "danger") { badge = lastClass ? "Last minute of school!" : "Last minute!"; badgeKind = "danger"; }
-        else if (level === "warn") { badge = fx && lastClass ? "Almost free!" : "Class ends soon"; badgeKind = "warn"; }
-        else if (fx && lastClass) badge = "Last class of the day";
-        dk = id;
-        // A class transition marks whether the previous class ended just now,
-        // which is when the optional scheduled bell should ring.
-        if (watch && watch.id !== id && now >= watch.end && now - watch.end < 6 && settings.alert.sound) bell();
-        watch = { end: p.end, id };
-        if (warnNow && warnedFor !== id) { const quiet = firstTick; warnedFor = id; if (!quiet) fireAlert(); }
-      } else {
-        // a passing period you entered, or an unlisted gap between classes
-        mode = "passing";
-        const nx = nextClass(item ? item.end : now);
-        const leftP = (item ? item.end : nx.start) - now;
-        if (item) {
-          nowTxt = item.name; count = countdown(item.end - now);
-          unit = item.end === nx.start ? "until " + nx.name : "left in passing time";
-          pct = (now - item.start) / (item.end - item.start) * 100;
-          noteTxt = item.note || nx.note;
-        } else {
-          const prev = [...P].reverse().find(p => p.end <= now);
-          nowTxt = "Passing time"; count = countdown(nx.start - now); unit = "until " + nx.name;
-          pct = (now - prev.end) / (nx.start - prev.end) * 100;
-          noteTxt = nx.note;
-        }
-        sub = nx.name + " starts at " + fmtClock(nx.start);
-        detTxt = head(nx);
-        if (fx) {
-          tone = "go"; badge = "Head to class";
-          hype = Math.max(clamp01(1 - leftP / 120) * 0.9, hS * 0.85);
-          if (leftP <= 60) { level = "danger"; badge = "Hurry! Under a minute"; badgeKind = "danger"; }
-          dk = sc.id + "|pass|" + (item ? cur : "g" + nx.start);
-        }
-      }
-    }
-  }
-  if (level) tone = level;
-  if (level === "danger" && fx && dangerFor !== dk) { dangerFor = dk; if (!firstTick) flashHero(); }
-  // the bell: a class we were watching has just ended
-  if (!inClass && watch) {
-    if (now >= watch.end && now - watch.end < 6 && settings.alert.sound) bell();
-    watch = null;
-  }
-  // confetti when the last bell rings while the page is open
-  if (fx && mode === "out" && (prevMode === "class" || prevMode === "passing") && !matchMedia("(prefers-reduced-motion: reduce)").matches) confetti();
-  prevMode = mode;
-
-  const root = document.documentElement;
-  root.dataset.tone = tone; root.dataset.level = level;
-  root.style.setProperty("--hype", hype.toFixed(3));
-  $("hero").dataset.mode = mode;
-  const bd = $("badge"); bd.hidden = !badge; bd.textContent = badge; bd.dataset.kind = badgeKind;
-  $("statLeft").dataset.final = fx && leftSec >= 0 ? (leftSec <= 600 ? "2" : leftSec <= 3600 ? "1" : "") : "";
-
-  $("now").textContent = nowTxt;
-  $("count").textContent = count;
-  $("unit").textContent = unit;
-  $("pct").textContent = pctTxt;
-  $("sub").textContent = sub;
-  $("det").textContent = detTxt;
-  $("nextLine").textContent = nextLine;
-  $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, pct)) / 100);
-  updateComparisonRings(d, now, sc);
-  $("schoolLeft").textContent = sLeft;
-  $("schoolPct").textContent = P ? Math.floor(Math.min(100, sPct)) + "% through the day" : "";
-  const nt = $("noteTxt");
-  nt.textContent = noteTxt || "No note for this period.";
-  nt.classList.toggle("muted", !noteTxt);
-  const live = P && now >= C[0].start && now < C[C.length - 1].end;
-  document.title = live ? (level === "danger" ? "! " : "") + count + " · " + nowTxt : "School Schedule";
-
-  // Key list rendering by every schedule's contents and live time segment, so
-  // secondary schedules update independently of the schedule shown by the ring.
-  const listKey = JSON.stringify([dayKey(d), settings.showPassing, settings.adjust,
-    listSchedules.map(schedule => {
-      const checked = check(schedule.periods);
-      const periods = checked.ok ? applyAdjust(checked.list, d).list : [];
-      const current = periods.findIndex(period => now >= period.start && now < period.end);
-      const classes = periods.filter(period => period.kind !== "passing");
-      return [schedule.id, schedule.name, schedule.periods, current,
-        classes.length ? now < classes[0].start : false,
-        classes.length ? now >= classes[classes.length - 1].end : false];
-    })]);
-  if (key !== lastKey || listKey !== lastListKey) {
-    renderList(listSchedules, d, now);
-    lastKey = key; lastListKey = listKey;
-  }
-  firstTick = false;
-}
-
-// ---- Settings: weekly schedule editor ----
-// The editor is a projection of the chosen set. Input events read the form,
-// validate the whole schedule, save accepted state, and refresh the dashboard.
-function buildSetTabs() {
-  const tabs = $("setTabs"); tabs.textContent = "";
-  settings.sets.forEach(set => {
-    const button = mk("button", { type: "button", className: "tab", textContent: setLabel(set) });
-    button.setAttribute("aria-pressed", String(set.id === settings.editingSetId));
-    button.onclick = () => {
-      settings.editingSetId = set.id;
-      settings.editing = schedulesInSet(set.id)[0].id;
-      syncEditorScheduleToDashboard(ed());
-      save(); buildSchedUI(); lastKey = ""; tick();
-    };
-    tabs.append(button);
-  });
-  const add = mk("button", { type: "button", className: "alt tab", textContent: "+ Add set" });
-  add.onclick = () => {
-    const source = schedulesInSet(settings.editingSetId), id = newId("set");
-    const set = { id, name: "Set " + (settings.sets.length + 1) };
-    settings.sets.push(set);
-    const copies = source.map(schedule => ({ ...clone(schedule), id: newId(), setId: id }));
-    settings.schedules.push(...copies);
-    settings.editingSetId = id;
-    settings.editing = copies[0].id;
-    save(); buildAll();
-  };
-  tabs.append(add);
-  const set = editingSet();
-  $("setName").value = set.name;
-  $("deleteSet").disabled = settings.sets.length < 2;
-}
-function buildTabs() {
-  // Schedule tabs edit one timetable inside the current set. If that set is
-  // visible in either ring, the ring selection follows the editor selection.
-  const tabs = $("tabs"); tabs.textContent = "";
-  schedulesInSet().forEach(s => {
-    const b = mk("button", { type: "button", className: "tab", textContent: label(s) });
-    b.setAttribute("aria-pressed", String(s.id === settings.editing));
-    b.onclick = () => {
-      settings.editing = s.id;
-      syncEditorScheduleToDashboard(s);
-      save(); buildSchedUI(); lastKey = ""; tick();
-    };
-    tabs.append(b);
-  });
-  const add = mk("button", { type: "button", className: "alt tab", textContent: "+ Add schedule" });
-  add.onclick = () => {
-    const n = { id: newId(), setId: settings.editingSetId, name: "Schedule " + (schedulesInSet().length + 1), days: [], passing: ed().passing, periods: clone(ed().periods) };
-    settings.schedules.push(n); settings.editing = n.id; save();
-    if (settings.activeSetId === settings.editingSetId) viewScheduleId = n.id;
-    if (settings.compareSetId === settings.editingSetId) compareViewScheduleId = n.id;
-    buildSchedUI(); lastKey = ""; tick(); $("sname").select();
-  };
-  tabs.append(add);
-}
-function buildToday() {
-  // Today-only controls are populated from the override records only when their
-  // stored date matches today's local calendar date.
-  const sel = $("today"); sel.textContent = "";
-  sel.append(mk("option", { value: "", textContent: "Automatic (by day)" }));
-  schedulesInSet().forEach(s => sel.append(mk("option", { value: s.id, textContent: label(s) })));
-  const today = dayKey(new Date()), o = settings.override, a = settings.adjust;
-  sel.value = o && o.date === today ? o.id : "";
-  $("shift").value = a && a.date === today ? a.shift : 0;
-  $("endAt").value = a && a.date === today ? a.endAt : "";
-}
-function dayHint() {
-  const missing = DAYNAMES.filter((n, i) => !schedulesInSet().some(s => s.days.includes(i)));
-  $("dayhint").textContent = "Schedules in this set can share weekdays; assign all relevant schedules, then compare sets on the dashboard. " +
-    (missing.length ? "No schedule assigned to: " + missing.join(", ") + "." : "Every day has at least one schedule.");
-}
-// A week strip makes day assignments scannable without opening each schedule.
-// Today receives a border cue, while uncovered days are labeled No school.
-let weekOverviewDate = "";
-function renderWeekOverview() {
-  const box = $("weekOverview");
-  box.textContent = "";
-  weekOverviewDate = dayKey(new Date());
-  DAYNAMES.forEach((day, index) => {
-    const schedules = schedulesInSet().filter(item => item.days.includes(index));
-    const list = mk("div", { className: "week-day-list" });
-    if (schedules.length) schedules.forEach(schedule => list.append(mk("span", { textContent: label(schedule) })));
-    else list.append(mk("span", { className: "week-day-empty", textContent: "No school" }));
-    const cell = mk("div", {}, mk("strong", { textContent: day }), list);
-    cell.className = "week-day";
-    cell.dataset.empty = String(!schedules.length);
-    if (schedules.length) cell.title = schedules.map(label).join(", ");
-    cell.dataset.today = String(index === new Date().getDay());
-    box.append(cell);
-  });
-}
-function addRow(p) {
-  // Construct each period with the same field order as readRows() below.
-  // Labels are attached for assistive technology even when placeholders exist.
-  const kind = p.kind === "passing" ? "passing" : "class", pass = kind === "passing";
-  const n = mk("input", { type: "text", value: p.name, placeholder: pass ? "Passing time" : "Name", className: "f-n", maxLength: 40 });
-  const s = mk("input", { type: "time", value: p.start, className: "f-s" });
-  const e = mk("input", { type: "time", value: p.end, className: "f-e" });
-  const t = mk("input", { type: "text", value: p.teacher || "", placeholder: "Teacher (optional)", className: "f-t", maxLength: 40 });
-  const r = mk("input", { type: "text", value: p.room || "", placeholder: "Room (optional)", className: "f-r", maxLength: 20 });
-  const o = mk("input", { type: "text", value: p.note || "", placeholder: pass ? "Note (optional)" : "Note, e.g. “Welcome to school”", className: "f-o", maxLength: 120 });
-  n.setAttribute("aria-label", pass ? "Passing period name" : "Period name");
-  s.setAttribute("aria-label", "Start time");
-  e.setAttribute("aria-label", "End time");
-  t.setAttribute("aria-label", "Teacher");
-  r.setAttribute("aria-label", "Room");
-  o.setAttribute("aria-label", "Note shown in the note box");
-  const x = mk("button", { type: "button", className: "x f-x", textContent: "✕" });
-  x.setAttribute("aria-label", "Remove");
-  // The grid-area classes in CSS map this fixed DOM order to desktop and mobile
-  // arrangements without duplicating or moving the input elements.
-  const row = mk("div", { className: "prow" + (pass ? " pass" : "") }, n, s, e, t, r, o, x);
-  row.dataset.kind = kind;
-  x.onclick = () => { row.remove(); commitRows(); };
-  $("rows").append(row);
-  return n;
-}
-function readRows() {
-  // Convert the editor DOM back into plain data; persistence never stores DOM
-  // nodes or relies on their visual order before sorting.
-  return [...$("rows").children].map(row => {
-    const [n, s, e, t, r, o] = row.querySelectorAll("input");
-    return { name: n.value, start: s.value, end: e.value, teacher: t.value, room: r.value, note: o.value, kind: row.dataset.kind || "class" };
-  });
-}
-function commitRows() {
-  // Commit only complete, non-overlapping schedules so a half-edited row cannot
-  // replace the last valid schedule in storage.
-  const rows = readRows(), res = check(rows);
-  if (!res.ok) { $("err").textContent = res.msg; return; }
-  $("err").textContent = "";
-  ed().periods = byStart(rows); save(); lastKey = ""; tick();
-}
-const startKey = t => { const v = toSec(t); return v == null ? Infinity : v; };
-const byStart = rows => rows.map((r, i) => ({ r, i, k: startKey(r.start) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.r);
-// Reorder the rows on screen by start time (done when you leave a row, so rows don't jump while you type)
-function sortRows() {
-  // Preserve stable order for equal/invalid starts; check() will report invalid
-  // times instead of the editor unexpectedly jumping them to the top.
-  const box = $("rows"), rows = [...box.children];
-  const sorted = rows.map((r, i) => ({ r, i, k: startKey(r.querySelectorAll("input")[1].value) }))
-    .sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.r);
-  if (sorted.every((r, i) => r === rows[i])) return false;
-  sorted.forEach(r => box.append(r));
-  return true;
-}
-function buildSchedUI() {
-  // Refresh every control that depends on the selected schedule after tab
-  // switches, imports, deletions, and resets.
-  const sc = ed();
-  buildSetTabs();
-  buildTabs();
-  renderWeekOverview();
-  $("sname").value = sc.name;
-  $("passMin").value = sc.passing;
-  const days = $("days"); days.textContent = "";
-  DAYNAMES.forEach((name, i) => {
-    const cb = mk("input", { type: "checkbox", checked: sc.days.includes(i) });
-    cb.onchange = () => {
-      if (cb.checked) ed().days.push(i);
-      else ed().days = ed().days.filter(x => x !== i);
-      save(); dayHint(); renderWeekOverview(); buildDashboardControls(); lastKey = ""; tick();
-    };
-    days.append(mk("label", { className: "day" }, cb, name));
-  });
-  dayHint();
-  $("rows").textContent = "";
-  sc.periods.forEach(addRow);
-  $("err").textContent = "";
-  $("del").disabled = schedulesInSet().length < 2;
-  buildToday();
-  buildDashboardControls();
-}
-// Delegate input handling from the stable container because period rows are
-// created and removed dynamically.
-$("rows").addEventListener("input", commitRows);
-$("rows").addEventListener("focusout", e => {
-  const row = e.target.closest && e.target.closest(".prow");
-  if (row && !row.contains(e.relatedTarget) && sortRows()) commitRows();
-});
-$("sname").oninput = () => { ed().name = $("sname").value; save(); buildTabs(); buildToday(); renderWeekOverview(); buildDashboardControls(); lastKey = ""; tick(); };
-$("setName").oninput = () => {
-  editingSet().name = $("setName").value.slice(0, 40);
-  const selected = $("setTabs").querySelector('[aria-pressed="true"]');
-  if (selected) selected.textContent = setLabel(editingSet());
-  save(); buildDashboardControls(); comparisonRenderKey = ""; tick();
-};
-$("passMin").oninput = () => {
-  let v = Math.round(Number($("passMin").value)); if (!Number.isFinite(v)) v = 5;
-  ed().passing = Math.max(0, Math.min(30, v)); save();
-};
-$("today").onchange = e => {
-  settings.override = e.target.value ? { date: dayKey(new Date()), id: e.target.value } : null;
-  if (settings.override) settings.activeSetId = settings.editingSetId;
-  viewScheduleId = settings.override ? settings.override.id : (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
-  buildDashboardControls();
-  save(); lastKey = ""; tick();
-};
-function setAdjust() {
-  // Clamp shift values to the same range enforced by sanitize() for imported
-  // settings so manual editing and link imports behave alike.
-  let sh = Math.round(Number($("shift").value)); if (!Number.isFinite(sh)) sh = 0;
-  sh = Math.max(-180, Math.min(300, sh));
-  const ea = toSec($("endAt").value) != null ? $("endAt").value : "";
-  settings.adjust = sh || ea ? { date: dayKey(new Date()), shift: sh, endAt: ea } : null;
-  save(); lastKey = ""; tick();
-}
-$("shift").oninput = setAdjust;
-$("endAt").oninput = setAdjust;
-$("clearToday").onclick = () => {
-  settings.override = null; settings.adjust = null;
-  viewScheduleId = (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
-  save(); buildToday(); buildDashboardControls(); lastKey = ""; tick();
-};
-const LAST_MIN = 23 * 3600 + 59 * 60;
-function endOfDay(rows) { // Latest ending time, or null if the editor has no usable times.
-  const ends = rows.map(r => toSec(r.end)).filter(v => v != null);
-  return ends.length ? Math.max(...ends) : null;
-}
-$("addRow").onclick = () => {
-  const rows = readRows(), end = endOfDay(rows);
-  let s = end == null ? 8 * 3600 : end;
-  const lastRow = rows.filter(r => toSec(r.end) === end).pop(), gap = ed().passing;
-  if (end != null && gap > 0 && lastRow && lastRow.kind !== "passing") {
-    const pe = Math.min(s + gap * 60, LAST_MIN);
-    addRow({ name: "Passing time", start: fromSec(s), end: fromSec(pe), kind: "passing" });
-    s = pe;
-  }
-  s = Math.min(s, 22 * 3600);
-  const count = rows.filter(r => r.kind !== "passing").length;
-  const n = addRow({ name: "Period " + (count + 1), start: fromSec(s), end: fromSec(Math.min(s + 50 * 60, LAST_MIN)), teacher: "", room: "", note: "", kind: "class" });
-  sortRows(); n.focus();
-  $("gapMsg").textContent = "";
-  commitRows();
-};
-$("addPass").onclick = () => {
-  const end = endOfDay(readRows()), s = Math.min(end == null ? 8 * 3600 : end, 23 * 3600);
-  const n = addRow({ name: "Passing time", start: fromSec(s), end: fromSec(Math.min(s + (ed().passing || 5) * 60, LAST_MIN)), kind: "passing" });
-  sortRows(); n.focus();
-  $("gapMsg").textContent = "";
-  commitRows();
-};
-$("fillGaps").onclick = () => {
-  const res = check(readRows()), msg = $("gapMsg");
-  if (!res.ok) { msg.textContent = "Fix the problem above first: " + res.msg; return; }
-  let n = 0;
-  for (let i = 1; i < res.list.length; i++) {
-    const a = res.list[i - 1], b = res.list[i];
-    if (b.start > a.end) { addRow({ name: "Passing time", start: fromSec(a.end), end: fromSec(b.start), kind: "passing" }); n++; }
-  }
-  msg.textContent = n ? "Added " + n + " passing period" + (n === 1 ? "" : "s") + "." : "There are no gaps to fill.";
-  if (n) { sortRows(); commitRows(); }
-};
-
-// Two-tap confirmation avoids browser confirm() dialogs, which may be blocked.
-// The action runs only on the second click inside the short confirmation window.
-function arm(btn, confirmText, action) {
-  // Reusing this helper keeps destructive actions consistent and gives the
-  // user a visible undo window before the action runs.
-  const orig = btn.textContent; let t = null;
-  btn.onclick = () => {
-    if (t) { clearTimeout(t); t = null; btn.textContent = orig; btn.classList.remove("danger"); action(); return; }
-    btn.textContent = confirmText; btn.classList.add("danger");
-    t = setTimeout(() => { t = null; btn.textContent = orig; btn.classList.remove("danger"); }, 3500);
-  };
-}
-arm($("del"), "Tap again to delete", () => {
-  const id = settings.editing;
-  settings.schedules = settings.schedules.filter(s => s.id !== id);
-  if (settings.override && settings.override.id === id) settings.override = null;
-  settings.editing = schedulesInSet(settings.editingSetId)[0].id;
-  if (viewScheduleId === id) viewScheduleId = null;
-  save(); buildSchedUI(); lastKey = ""; tick();
-});
-arm($("deleteSet"), "Tap again to delete set", () => {
-  const removed = settings.editingSetId;
-  settings.sets = settings.sets.filter(set => set.id !== removed);
-  settings.schedules = settings.schedules.filter(schedule => schedule.setId !== removed);
-  if (settings.override && !settings.schedules.some(schedule => schedule.id === settings.override.id)) settings.override = null;
-  settings.editingSetId = settings.sets[0].id;
-  settings.editing = schedulesInSet(settings.editingSetId)[0].id;
-  if (settings.activeSetId === removed) settings.activeSetId = settings.editingSetId;
-  if (settings.compareSetId === removed || settings.compareSetId === settings.activeSetId) settings.compareSetId = "";
-  viewScheduleId = null;
-  save(); buildAll();
-});
-
-// ---- Settings: theme, display, and alert controls ----
-function buildThemeUI() {
-  // Populate native inputs from the current settings object. Input listeners
-  // below keep those settings in sync as soon as the user changes a control.
-  const pk = $("pickers"); pk.textContent = "";
-  for (const [k, name] of COLORS) {
-    const inp = mk("input", { type: "color", id: "c_" + k });
-    inp.setAttribute("aria-label", name + " color");
-    inp.oninput = () => {
-      // Start from the fully resolved palette so changing one color does not
-      // erase the other colors selected by the active preset.
-      const c = {}, cur = resolved();
-      for (const [kk] of COLORS) c[kk] = cur[kk];
-      c[k] = inp.value;
-      settings.theme.custom = c; settings.theme.preset = "custom";
-      save(); applyTheme();
-    };
-    pk.append(mk("label", { className: "pick" }, name, inp));
-  }
-  $("fmt").value = settings.use24 ? "24" : "12";
-  $("size").value = settings.size;
-  $("secs").checked = settings.seconds;
-  $("showPass").checked = settings.showPassing;
-  $("fx").checked = settings.effects;
-  for (const id of ["autoL", "autoD"]) {
-    const sel = $(id); sel.textContent = "";
-    Object.keys(PRESETS).forEach(k => sel.append(mk("option", { value: k, textContent: PRESETS[k].label })));
-  }
-  $("autoL").value = settings.theme.autoLight; $("autoD").value = settings.theme.autoDark;
-  $("font").value = settings.font; $("corners").value = settings.corners;
-  $("ringw").value = settings.ring; $("bgstyle").value = settings.bgStyle;
-  $("shNote").checked = settings.showNote; $("shPct").checked = settings.showPercent; $("shNum").checked = settings.showNumDate;
-  $("alOn").checked = settings.alert.on;
-  $("alMins").value = String(settings.alert.mins);
-  $("alSound").checked = settings.alert.sound;
-}
-$("fmt").onchange = e => { settings.use24 = e.target.value === "24"; save(); applyDisplay(); };
-$("size").onchange = e => { settings.size = e.target.value; save(); applyDisplay(); };
-$("secs").onchange = e => { settings.seconds = e.target.checked; save(); tick(); };
-$("autoL").onchange = e => { settings.theme.autoLight = e.target.value; save(); applyTheme(); };
-$("autoD").onchange = e => { settings.theme.autoDark = e.target.value; save(); applyTheme(); };
-for (const [id, key] of [["font", "font"], ["corners", "corners"], ["ringw", "ring"], ["bgstyle", "bgStyle"]]) {
-  // These appearance controls share the same save-and-refresh behavior.
-  $(id).onchange = e => { settings[key] = e.target.value; save(); applyDisplay(); };
-}
-for (const [id, key] of [["shNote", "showNote"], ["shPct", "showPercent"], ["shNum", "showNumDate"]])
-  $(id).onchange = e => { settings[key] = e.target.checked; save(); applyDisplay(); };
-$("fx").onchange = e => { settings.effects = e.target.checked; save(); lastKey = ""; tick(); };
-$("showPass").onchange = e => { settings.showPassing = e.target.checked; save(); lastKey = ""; tick(); };
-$("alOn").onchange = e => { settings.alert.on = e.target.checked; save(); tick(); };
-$("alMins").onchange = e => { settings.alert.mins = +e.target.value; save(); tick(); };
-$("alSound").onchange = e => { settings.alert.sound = e.target.checked; save(); if (e.target.checked) beep(1, 880); };
-$("alTest").onclick = () => beep(2, 880);
-
-// ---- Share and import ----
-// Shared settings are compressed when the browser supports CompressionStream,
-// then encoded as URL-safe base64. The raw encoding remains a compatibility
-// fallback for older browsers.
-// These two helpers implement the compact, URL-safe share codec.
-class ShareError extends Error {}
-// URL-safe base64 replaces the two characters that have special meaning in
-// fragments and drops padding to keep shared links short.
-const b64 = u8 => { let s = ""; u8.forEach(b => { s += String.fromCharCode(b); }); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
-const unb64 = t => { t = t.replace(/-/g, "+").replace(/_/g, "/"); while (t.length % 4) t += "="; return Uint8Array.from(atob(t), c => c.charCodeAt(0)); };
-async function encode(str) {
-  const bytes = new TextEncoder().encode(str);
-  if (typeof CompressionStream !== "undefined") {
-    try {
-      const buf = await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
-      return "z" + b64(new Uint8Array(buf));
-    } catch (e) {}
-  }
-  return "r" + b64(bytes);
-}
-async function decode(code) {
-  // Check the version marker before parsing so unsupported or malformed links
-  // produce a clear import error instead of partially changing application state.
-  const tag = code[0];
-  const bytes = unb64(code.slice(1));
-  if (tag === "z") {
-    if (typeof DecompressionStream === "undefined") throw new ShareError("This browser can’t open that link. Try a newer browser.");
-    const buf = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
-    return JSON.parse(new TextDecoder().decode(buf));
-  }
-  if (tag === "r") return JSON.parse(new TextDecoder().decode(bytes));
-  throw new ShareError("That link or code isn’t valid.");
-}
-
-async function makePayload(full) {
-  // Share one complete weekly set at a time. This keeps a friend's imported
-  // schedules together instead of mixing them into unrelated local sets.
-  const active = editingSet();
-  const o = { v: 1, setName: setLabel(active), schedules: schedulesInSet(active.id).map(s => ({ name: s.name, days: s.days, passing: s.passing, periods: s.periods })) };
-  if (full) { o.theme = settings.theme; o.use24 = settings.use24; o.seconds = settings.seconds; o.size = settings.size; o.showPassing = settings.showPassing; o.effects = settings.effects; o.alert = settings.alert;
-    for (const k of ["font", "corners", "ring", "bgStyle", "showNote", "showPercent", "showNumDate"]) o[k] = settings[k];
-  }
-  return encode(JSON.stringify(o));
-}
-function importPayload(o, mode = "replace") {
-  // Imported schedules are routed into the set currently open in the editor.
-  // Replacement removes only that set; every other set stays untouched.
-  const incoming = cleanSchedules(o && o.schedules);
-  if (!incoming.length) throw new ShareError("No schedule was found in that link or code.");
-  const targetId = settings.editingSetId;
-  const before = schedulesInSet(targetId);
-  const retained = mode === "add" ? settings.schedules : settings.schedules.filter(item => item.setId !== targetId);
-  const ids = new Set(retained.map(item => item.id));
-  const names = new Set((mode === "add" ? before : []).map(item => item.name.toLowerCase()));
-  const added = incoming.map(item => {
-    const copy = clone(item);
-    while (ids.has(copy.id)) copy.id = newId();
-    ids.add(copy.id);
-    copy.setId = targetId;
-    if (mode === "add") {
-      const baseName = copy.name;
-      let uniqueName = baseName, suffix = 0;
-      while (names.has(uniqueName.toLowerCase())) {
-        suffix++;
-        const ending = suffix === 1 ? " (imported)" : " (imported " + suffix + ")";
-        uniqueName = baseName.slice(0, 40 - ending.length) + ending;
-      }
-      copy.name = uniqueName;
-      names.add(copy.name.toLowerCase());
-    }
-    return copy;
-  });
-  settings.schedules = [...retained, ...added];
-  settings.editingSetId = targetId;
-  settings.editing = added[0].id;
-  if (settings.activeSetId === targetId) viewScheduleId = added[0].id;
-  if (mode === "replace") {
-    const remainingIds = new Set(settings.schedules.map(item => item.id));
-    if (settings.override && !remainingIds.has(settings.override.id)) settings.override = null;
-    if (settings.activeSetId === targetId) settings.adjust = null;
-    if (o.theme) settings.theme = sanitize(o).theme;
-    const importedSettings = sanitize(o);
-    if ("use24" in o || "seconds" in o || "size" in o) { settings.use24 = importedSettings.use24; settings.seconds = importedSettings.seconds; settings.size = importedSettings.size; }
-    if ("showPassing" in o) settings.showPassing = importedSettings.showPassing;
-    if ("effects" in o) settings.effects = importedSettings.effects;
-    for (const k of ["font", "corners", "ring", "bgStyle", "showNote", "showPercent", "showNumDate"]) if (k in o) settings[k] = importedSettings[k];
-    if (o.alert) settings.alert = importedSettings.alert;
-  }
-  save(); buildAll();
-}
-let pendingImport = null;
-function requestImport(payload) {
-  if (!cleanSchedules(payload && payload.schedules).length) throw new ShareError("No schedule was found in that link or code.");
-  pendingImport = payload;
-  const count = cleanSchedules(payload.schedules).length;
-  const destination = setLabel(editingSet());
-  $("importChoiceText").textContent = count + (count === 1 ? " schedule is" : " schedules are") +
-    " ready for the ‘" + destination + "’ set. Add them to this set or replace its schedules?";
-  $("addImport").textContent = "Add to " + destination;
-  $("replaceImport").textContent = "Replace set schedules";
-  $("importChoice").showModal();
-}
-function completeImport(mode) {
-  if (!pendingImport) return;
-  try {
-    importPayload(pendingImport, mode);
-    const result = mode === "add" ? "Schedules added to the ‘" + setLabel(editingSet()) + "’ set." : "Set schedules replaced.";
-    $("shareMsg").textContent = result;
-    $("importStatus").textContent = result;
-    $("importStatus").hidden = false;
-    $("backupMsg").textContent = "";
-  } catch (error) {
-    $("shareMsg").textContent = error.message || "The schedules could not be imported.";
-  }
-  pendingImport = null;
-  $("importChoice").close();
-  $("banner").hidden = true;
-  pendingShare = null;
-  clearHash();
-}
-$("addImport").onclick = () => completeImport("add");
-$("replaceImport").onclick = () => completeImport("replace");
-$("cancelImport").onclick = () => { pendingImport = null; $("importChoice").close(); };
-$("importChoice").addEventListener("click", e => { if (e.target === e.currentTarget) { pendingImport = null; e.currentTarget.close(); } });
-// Export the complete local settings object as a portable, versioned JSON file.
-// URL shares stay compact and schedule-focused; backups preserve local display
-// choices and temporary overrides as well.
-$("exportBackup").onclick = () => {
-  const backup = { format: "school-schedule-backup", version: 1, settings };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob), link = mk("a", { href: url, download: "school-schedule-backup-" + dayKey(new Date()) + ".json" });
-  document.body.append(link); link.click(); link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  $("backupMsg").textContent = "Backup downloaded.";
-};
-$("chooseBackup").onclick = () => $("backupFile").click();
-$("backupFile").onchange = async e => {
-  const file = e.target.files[0], msg = $("backupMsg");
-  if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    if (data.format !== "school-schedule-backup" || data.version !== 1 ||
-        !data.settings || !Array.isArray(data.settings.schedules) ||
-        cleanSchedules(data.settings.schedules).length !== data.settings.schedules.length) {
-      throw new Error("The selected file is not a supported School Schedule backup.");
-    }
-    settings = sanitize(data.settings);
-    save(); buildAll();
-    msg.textContent = "Backup restored.";
-  } catch (error) {
-    msg.textContent = error instanceof SyntaxError ? "That file is not valid JSON." : error.message;
-  } finally {
-    e.target.value = "";
-  }
-};
-const clearHash = () => { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} };
-
-$("mkLink").onclick = async () => {
-  const msg = $("shareMsg");
-  try {
-    const url = location.href.split("#")[0] + "#s=" + await makePayload($("shareAll").checked);
-    const out = $("linkOut"); out.value = url; out.hidden = false; out.select();
-    let ok = false;
-    try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {}
-    msg.textContent = ok ? "Link copied. Open it on another device to import." : "Select the link above and copy it, then open it on another device.";
-  } catch (e) { msg.textContent = "Couldn’t make a link. Try again."; }
-};
-$("doImport").onclick = async () => {
-  const msg = $("shareMsg"), raw = $("importIn").value.trim();
-  if (!raw) { msg.textContent = "Paste a share link or code first."; return; }
-  try {
-    const m = /[#&?]s=([A-Za-z0-9_-]+)/.exec(raw);
-    requestImport(await decode(m ? m[1] : raw.replace(/\s+/g, "")));
-  } catch (e) {
-    msg.textContent = e instanceof ShareError ? e.message : "That link or code could not be read. Check that you copied all of it.";
-  }
-};
-
-// Opening a share link offers an explicit import; reading the URL never replaces
-// local schedules until the user confirms in the banner.
-let pendingShare = null;
-async function checkHash() {
-  // Shared data is staged in the import banner; no local state changes until
-  // the user presses Import.
-  const m = /[#&]s=([A-Za-z0-9_-]+)/.exec(location.hash);
-  if (!m) return;
-  try {
-    const o = await decode(m[1]), sch = cleanSchedules(o.schedules);
-    if (!sch.length) throw new ShareError("empty");
-    pendingShare = o;
-    $("bannerTxt").textContent = "Shared " + (sch.length === 1 ? "schedule" : "schedules") + " (" + sch.length + ") ready: " +
-      sch.slice(0, 3).map(label).join(", ") + (sch.length > 3 ? ", …" : "") + ". Choose whether to add these schedules to the selected set or replace that set's schedules.";
-    $("banner").hidden = false;
-  } catch (e) { clearHash(); }
-}
-$("bImport").onclick = () => { try { requestImport(pendingShare); } catch (e) { pendingShare = null; $("banner").hidden = true; clearHash(); } };
-$("bDismiss").onclick = () => { pendingShare = null; $("banner").hidden = true; clearHash(); };
-addEventListener("hashchange", checkHash);
-
-// ---- Dialog lifecycle, reset, and startup ----
-function buildAll() {
-  // Build controls before applying appearances so palette inputs and UI labels
-  // exist when the current settings are pushed into the page.
-  buildSchedUI();
-  buildThemeUI();
-  applyTheme();
-  applyDisplay();
-}
-arm($("reset"), "Tap again to reset", () => {
-  try { localStorage.removeItem(KEY); localStorage.removeItem("schoolSchedule.v2"); } catch (e) {}
-  settings = clone(DEFAULTS);
-  buildAll();
-});
-
-const dlg = $("dlg");
-// Clicking inside the dialog body does not dismiss an in-progress edit.
-$("gear").onclick = () => dlg.showModal();
-$("close").onclick = $("done2").onclick = () => dlg.close();
-dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
-
-// Keyboard shortcuts act only on the page itself. Editing controls, modified
-// key combinations, and open dialogs keep their normal browser behavior.
-const keysDlg = $("keysDlg");
-$("helpKeys").onclick = () => keysDlg.showModal();
-$("keysClose").onclick = () => keysDlg.close();
-keysDlg.addEventListener("click", e => { if (e.target === keysDlg) keysDlg.close(); });
-document.addEventListener("keydown", e => {
-  if (e.ctrlKey || e.metaKey || e.altKey || dlg.open || keysDlg.open) return;
-  if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true']")) return;
-  if (e.key.toLowerCase() === "s") { e.preventDefault(); dlg.showModal(); }
-  else if (e.key.toLowerCase() === "t") {
-    $("scheduleTitle").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
-    $("scheduleTitle").focus({ preventScroll: true });
-  } else if (e.key === "?") keysDlg.showModal();
-});
-
-// Settings tabs keep the dialog compact. Remember the last section locally, but
-// fall back to Schedules when storage contains an unknown tab name.
-(function () {
-  const bar = $("stabs"); if (!bar) return;
-  const panels = [...document.querySelectorAll(".panel")];
-  const btns = [...bar.querySelectorAll(".stab")];
-  const read = () => { try { return localStorage.getItem("settingsTab"); } catch (e) { return null; } };
-  function show(id) {
-    panels.forEach(p => { p.hidden = p.dataset.tab !== id; });
-    btns.forEach(b => { const on = b.dataset.tab === id; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
-  }
-  btns.forEach(b => {
-    b.tabIndex = -1;
-    b.onclick = () => { show(b.dataset.tab); try { localStorage.setItem("settingsTab", b.dataset.tab); } catch (e) {} };
-  });
-  let start = read();
-  if (!panels.some(p => p.dataset.tab === start)) start = "schedules";
-  show(start);
-})();
-
-buildAll();
-checkHash();
-setInterval(tick, 500);
-</script>
 </body>
 </html>

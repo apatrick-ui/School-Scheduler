@@ -1648,7 +1648,7 @@ feedbackForm.addEventListener("submit", async e => {
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || "Could not save feedback.");
     }
-    feedbackStatus.textContent = "Thanks — your feedback was sent. Check the Feedback tab if you want to confirm it arrived.";
+    feedbackStatus.textContent = "Thanks — your feedback was sent.";
     feedbackForm.reset(); feedbackCount.textContent = "0 / 1200";
   } catch (error) {
     feedbackStatus.dataset.error = "true";

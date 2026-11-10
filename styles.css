@@ -658,6 +658,7 @@ li:not(.cur):not(.schedule-heading){animation:periodIn .24s ease both}
 @keyframes periodIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .feedback-trigger{min-height:38px;padding:7px 12px;border-radius:12px;background:color-mix(in srgb,var(--bar) 7%,var(--card));border:1px solid var(--line);color:var(--ink);font-size:.88rem}
 .feedback-trigger:hover{background:color-mix(in srgb,var(--hi) 18%,var(--card));border-color:color-mix(in srgb,var(--bar) 24%,var(--line))}
+#openFeedback:not(:disabled):hover{background:color-mix(in srgb,var(--hi) 18%,var(--card));border-color:color-mix(in srgb,var(--bar) 24%,var(--line));color:var(--ink)}
 #feedbackDlg{width:min(500px,calc(100% - 20px))}
 #feedbackDlg .dhead{align-items:center}
 #feedbackDlg .dhead h2{font-size:1.4rem;letter-spacing:-.04em}

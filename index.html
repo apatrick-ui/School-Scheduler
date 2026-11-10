@@ -56,7 +56,7 @@
   <div class="dashboard-focus">
   <section class="card hero" id="hero">
     <div class="confetti" id="confetti" aria-hidden="true"></div>
-    <div class="now" id="now" role="status" aria-live="polite" aria-atomic="true">Loading…</div>
+    <div class="now" id="now" role="status" aria-live="off" aria-atomic="true">Loading…</div>
     <div class="ring-pair" id="ringPair">
       <section class="ring-panel" aria-label="Schedule progress">
         <div class="ring-panel-head">
@@ -163,7 +163,8 @@
     <p class="hint">Used when you add a class. You can change each passing period’s times below.</p>
     <p class="label section-title">Class times</p>
     <div id="rows"></div>
-    <p class="err" id="err"></p>
+    <p class="err" id="err" role="status" aria-live="polite"></p>
+    <p class="editor-preview" id="editorPreview" aria-live="polite"></p>
     <div class="btns">
       <button class="alt" id="addRow" type="button">Add class</button>
       <button class="alt" id="addPass" type="button">Add passing time</button>
@@ -185,7 +186,8 @@
       <label class="opt">Move all class times (minutes) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
       <label class="opt">End school early <input type="time" id="endAt"></label>
       <p class="hint">Use a positive number to move times later, or a negative number to move them earlier. These changes clear tomorrow.</p>
-      <div class="btns"><button class="alt" id="clearToday" type="button">Clear today’s changes</button></div>
+      <p class="adjust-preview" id="adjustPreview" role="status" aria-live="polite"></p>
+      <div class="btns"><button id="applyToday" type="button">Apply today’s changes</button><button class="alt" id="clearToday" type="button">Clear today’s changes</button></div>
     </details>
     </div>
 
@@ -201,7 +203,7 @@
     <p class="hint" id="contrastStatus">Text stays easy to read across themes.</p>
     <details class="advanced-options">
       <summary>More appearance options</summary>
-      <details class="custom-colors"><summary>Choose your own colors</summary><div class="pickers" id="pickers"></div></details>
+      <details class="custom-colors"><summary>Customize individual colors</summary><p class="hint">Each color control is shown beside the part of the page it changes. Pick a color to see it apply right away.</p><div class="pickers" id="pickers"></div></details>
       <div class="opts">
         <label class="opt">Use this theme automatically in light mode <select id="autoL"></select></label>
         <label class="opt">Use this theme automatically in dark mode <select id="autoD"></select></label>
@@ -272,6 +274,25 @@
       <button class="alt" id="reset" type="button">Reset all schedules and settings</button>
       <button id="done2" type="button">Done</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="setupDlg" aria-labelledby="setupTitle">
+  <div class="dhead"><div><p class="feedback-kicker">LET’S SET UP YOUR DAY</p><h2 id="setupTitle">Build your school schedule</h2></div></div>
+  <div class="dbody">
+    <p class="hint">Start with the usual school day. You can fine-tune class times and names in Settings afterward.</p>
+    <form id="setupForm">
+      <div class="setup-grid">
+        <label class="field"><span class="label">First class starts</span><input id="setupStart" type="time" value="08:00" required></label>
+        <label class="field"><span class="label">Number of classes</span><input id="setupClasses" type="number" value="7" min="1" max="12" step="1" required></label>
+        <label class="field"><span class="label">Minutes per class</span><input id="setupLength" type="number" value="50" min="20" max="120" step="5" required></label>
+        <label class="field"><span class="label">Passing time (minutes)</span><input id="setupPassing" type="number" value="5" min="0" max="30" step="1" required></label>
+        <label class="field"><span class="label">Lunch or break (minutes)</span><input id="setupLunch" type="number" value="30" min="0" max="90" step="5" required></label>
+      </div>
+      <fieldset class="setup-days"><legend>School days</legend><div id="setupDayChoices" class="days"></div></fieldset>
+      <p class="err" id="setupError" role="status" aria-live="polite"></p>
+      <div class="btns"><button type="submit">Create my schedule</button><button class="alt" id="useSample" type="button">Use sample schedule</button></div>
+    </form>
   </div>
 </dialog>
 

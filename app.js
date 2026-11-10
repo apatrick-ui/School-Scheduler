@@ -58,8 +58,18 @@ const PRESETS = {
   arctic:    { label: "Arctic", bg: "#eaf4fb", card: "#ffffff", ink: "#12344d", hi: "#8fd3ff", bar: "#1d6fa5", warn: "#c2410c", go: "#0b9488", gold: "#c28a00", danger: "#c92a2a", glow: "#8fd3ff" }
 };
 // These keys must match the CSS custom properties and the color input IDs.
-const COLORS = [["bg", "Background"], ["card", "Cards"], ["ink", "Text"], ["hi", "Current class"], ["bar", "Progress ring"],
-  ["warn", "Heads-up"], ["go", "Passing time"], ["gold", "Last class and done"], ["danger", "Final minute"], ["glow", "Glow"]];
+const COLORS = [
+  ["bg", "Page background", "The area behind the panels."],
+  ["card", "Panels and cards", "The surfaces behind the timer, stats, and schedule."],
+  ["ink", "Main text", "Most headings and labels. Text may adjust for readability."],
+  ["hi", "Current class highlight", "The color behind the class happening now."],
+  ["bar", "Progress ring", "The ring around the countdown and other accent lines."],
+  ["warn", "Warning state", "The timer color when a class is nearly over."],
+  ["go", "Passing time", "The timer color during passing time."],
+  ["gold", "Last class and finished", "The timer color for the last class and after school."],
+  ["danger", "Final minute", "The timer color during the last minute."],
+  ["glow", "Background glow", "The soft color effect behind the page content."]
+];
 const FONTS = {
   rounded: { label: "Rounded", stack: 'ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif' },
   clean:   { label: "Clean",   stack: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' },
@@ -74,6 +84,10 @@ const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ALERT_MINS = [1, 2, 3, 5, 10];
 const KEY = "schoolSchedule.v3";
 const RING = 552.92;
+const FIRST_RUN = (() => {
+  try { return !localStorage.getItem(KEY) && !localStorage.getItem("schoolSchedule.v2"); }
+  catch (e) { return false; }
+})();
 
 // Small DOM helpers keep the UI-building code concise and consistent.
 const $ = id => document.getElementById(id);
@@ -81,6 +95,117 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const pad = n => String(n).padStart(2, "0");
 const mk = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; };
 const newId = (prefix = "s") => prefix + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+let customSelectId = 0;
+function syncCustomSelect(select) {
+  const ui = select._customSelect;
+  if (!ui) return;
+  const selected = select.selectedOptions[0];
+  ui.button.textContent = selected ? selected.textContent : "Choose an option";
+  ui.button.setAttribute("aria-disabled", String(select.disabled));
+  ui.button.tabIndex = select.disabled ? -1 : 0;
+  ui.menu.textContent = "";
+  const addOption = option => {
+    const item = mk("div", { className: "select-option", role: "option", tabIndex: option.disabled ? -1 : 0,
+      textContent: option.textContent });
+    item.dataset.value = option.value;
+    item.setAttribute("aria-selected", String(option.selected));
+    if (option.disabled) item.setAttribute("aria-disabled", "true");
+    item.onclick = () => {
+      if (option.disabled) return;
+      select.value = option.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      syncCustomSelect(select); closeCustomSelect(select, true);
+    };
+    ui.menu.append(item);
+  };
+  [...select.children].forEach(child => {
+    if (child.tagName === "OPTGROUP") {
+      ui.menu.append(mk("div", { className: "select-group-label", textContent: child.label }));
+      [...child.children].forEach(addOption);
+    } else if (child.tagName === "OPTION") addOption(child);
+  });
+}
+function closeCustomSelect(select, restoreFocus = false) {
+  const ui = select && select._customSelect;
+  if (!ui || ui.menu.hidden) return;
+  ui.menu.hidden = true; ui.menu.classList.remove("opens-up");
+  ui.button.setAttribute("aria-expanded", "false");
+  if (restoreFocus) ui.button.focus();
+}
+function openCustomSelect(select, last = false) {
+  const ui = select._customSelect;
+  if (!ui || select.disabled) return;
+  document.querySelectorAll("select").forEach(other => { if (other !== select) closeCustomSelect(other); });
+  syncCustomSelect(select);
+  ui.menu.hidden = false; ui.button.setAttribute("aria-expanded", "true");
+  const row = select.closest("dialog") || document.documentElement;
+  const bounds = row.getBoundingClientRect(), trigger = ui.button.getBoundingClientRect();
+  const needed = Math.min(ui.menu.scrollHeight, 260) + 12;
+  ui.menu.classList.toggle("opens-up", bounds.bottom - trigger.bottom < needed && trigger.top - bounds.top > needed);
+  const options = [...ui.menu.querySelectorAll('[role="option"]:not([aria-disabled="true"])')];
+  const target = last ? options[options.length - 1] : options.find(item => item.dataset.value === select.value) || options[0];
+  if (target) target.focus();
+}
+function enhanceSelects() {
+  document.querySelectorAll("select").forEach(select => {
+    if (select._customSelect) return;
+    const labelNode = select.labels && select.labels[0] ? select.labels[0].cloneNode(true) : null;
+    if (labelNode) labelNode.querySelectorAll("select,.select-control").forEach(node => node.remove());
+    const label = select.getAttribute("aria-label") || labelNode?.textContent.trim() || "Choose an option";
+    const id = "selectMenu" + (++customSelectId);
+    const button = mk("div", { className: "select-trigger", textContent: "", role: "combobox", tabIndex: 0 });
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-haspopup", "listbox");
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("aria-controls", id);
+    const menu = mk("div", { className: "select-menu", id, role: "listbox", hidden: true });
+    menu.setAttribute("aria-label", label);
+    const wrapper = mk("div", { className: "select-control" }, button, menu);
+    select.classList.add("native-select-source");
+    select.insertAdjacentElement("afterend", wrapper);
+    select._customSelect = { button, menu, wrapper };
+    button.addEventListener("click", e => { e.preventDefault(); menu.hidden ? openCustomSelect(select) : closeCustomSelect(select); });
+    button.addEventListener("keydown", e => {
+      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
+        e.preventDefault(); openCustomSelect(select, e.key === "ArrowUp");
+      }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const options = [...menu.querySelectorAll('[role="option"]:not([aria-disabled="true"])')];
+        const typed = e.key.toLocaleLowerCase();
+        const found = options.find(item => item.textContent.trim().toLocaleLowerCase().startsWith(typed));
+        if (found) { e.preventDefault(); openCustomSelect(select); found.focus(); }
+      }
+    });
+    menu.addEventListener("keydown", e => {
+      const options = [...menu.querySelectorAll('[role="option"]:not([aria-disabled="true"])')];
+      let index = options.indexOf(document.activeElement), next = index;
+      if (e.key === "ArrowDown") next = Math.min(index + 1, options.length - 1);
+      else if (e.key === "ArrowUp") next = Math.max(index - 1, 0);
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = options.length - 1;
+      else if (e.key === "Escape") { e.preventDefault(); closeCustomSelect(select, true); return; }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.activeElement.click(); return; }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const typed = e.key.toLocaleLowerCase();
+        const found = options.findIndex(item => item.textContent.trim().toLocaleLowerCase().startsWith(typed));
+        if (found >= 0) next = found;
+      } else if (e.key === "Tab") { closeCustomSelect(select); return; }
+      else return;
+      e.preventDefault(); if (options[next]) options[next].focus();
+    });
+    select.addEventListener("change", () => syncCustomSelect(select));
+    new MutationObserver(() => syncCustomSelect(select)).observe(select, { childList: true, subtree: true, characterData: true });
+    syncCustomSelect(select);
+  });
+}
+function syncAllCustomSelects() { document.querySelectorAll("select").forEach(syncCustomSelect); }
+document.addEventListener("pointerdown", e => {
+  if (e.target.closest(".select-control")) return;
+  document.querySelectorAll("select").forEach(closeCustomSelect);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll("select").forEach(select => closeCustomSelect(select));
+});
 // Local date keys deliberately use local calendar parts; school schedules are
 // interpreted in the student's device timezone, not UTC.
 const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
@@ -249,12 +374,12 @@ const label = s => {
 };
 
 function activeSchedule(d) {
-  // A dashboard preview and one-day override are only meaningful inside the
-  // selected set; otherwise use that set's first schedule assigned to today.
+  // A one-day override is an explicit choice for today, so it takes priority
+  // over the optional ring preview. The preview is used on ordinary days.
   const o = settings.override;
   const override = o && o.date === dayKey(d) ? settings.schedules.find(x => x.id === o.id && x.setId === settings.activeSetId) : null;
   const selected = settings.schedules.find(x => x.id === viewScheduleId && x.setId === settings.activeSetId);
-  const sc = selected || override || schedulesForDay(d, settings.activeSetId)[0] || null;
+  const sc = override || selected || schedulesForDay(d, settings.activeSetId)[0] || null;
   return { sc, forced: Boolean(override && sc.id === override.id) };
 }
 
@@ -291,7 +416,11 @@ function buildDashboardControls() {
   const activeRingSelect = $("activeRingSchedule");
   activeRingSelect.textContent = "";
   activeSchedules.forEach(sc => activeRingSelect.append(mk("option", { value: sc.id, textContent: label(sc) })));
+  const todayOverride = settings.override && settings.override.date === todayKey
+    ? activeSchedules.find(sc => sc.id === settings.override.id) : null;
+  if (todayOverride) viewScheduleId = todayOverride.id;
   activeRingSelect.value = viewScheduleId || "";
+  activeRingSelect.disabled = Boolean(todayOverride);
   activeRingSelect.onchange = e => {
     chooseComparisonSchedule(settings.activeSetId, e.target.value);
   };
@@ -315,6 +444,7 @@ function buildDashboardControls() {
   $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
   $("compareRingLabel").textContent = settings.sets.find(set => set.id === settings.compareSetId)
     ? setLabel(settings.sets.find(set => set.id === settings.compareSetId)) : "Compared group";
+  syncAllCustomSelects();
 }
 // Give ring content a quick, calm fade when the selected timetable changes.
 // The progress stroke already has its own transition; this adds motion to the
@@ -865,7 +995,7 @@ function tick() {
   const assignedToday = schedulesForDay(d, settings.activeSetId);
   // The ring can preview one schedule, but the normal day list includes every
   // schedule assigned to today. If none are assigned, keep the preview useful.
-  const listSchedules = assignedToday.length ? assignedToday : (sc ? [sc] : []);
+  const listSchedules = forced ? [sc] : assignedToday.length ? assignedToday : (sc ? [sc] : []);
   $("scheduleTitle").textContent = assignedToday.length > 1 ? "Today’s schedules" : sc ? label(sc) + " schedule" : "Today’s schedule";
   const res = sc ? check(sc.periods) : null;
   let P = res && res.ok ? res.list : null, adjusted = false;
@@ -1091,6 +1221,47 @@ function buildToday() {
   sel.value = o && o.date === today ? o.id : "";
   $("shift").value = a && a.date === today ? a.shift : 0;
   $("endAt").value = a && a.date === today ? a.endAt : "";
+  syncAllCustomSelects();
+  renderAdjustmentPreview();
+}
+function renderAdjustmentPreview() {
+  const today = new Date(), selectedId = $("today").value;
+  const schedule = selectedId
+    ? settings.schedules.find(item => item.id === selectedId && item.setId === settings.editingSetId)
+    : activeSchedule(today).sc || schedulesForDay(today, settings.editingSetId)[0];
+  const preview = $("adjustPreview"), apply = $("applyToday");
+  if (!schedule) {
+    preview.textContent = "Choose or create a schedule to preview today’s times.";
+    apply.disabled = true; return;
+  }
+  const checked = check(schedule.periods);
+  if (!checked.ok) {
+    preview.textContent = "Fix the schedule times before previewing today’s changes.";
+    apply.disabled = true; return;
+  }
+  const rawShift = Number($("shift").value);
+  const shift = Number.isFinite(rawShift) ? Math.max(-180, Math.min(300, Math.round(rawShift))) : 0;
+  const endAt = toSec($("endAt").value) != null ? $("endAt").value : "";
+  const cutoff = toSec(endAt);
+  const original = checked.list.filter(period => period.kind !== "passing");
+  const changed = checked.list.map(period => ({ ...period, start: period.start + shift * 60, end: period.end + shift * 60 }))
+    .filter(period => cutoff == null || period.start < cutoff)
+    .map(period => cutoff == null ? period : ({ ...period, end: Math.min(period.end, cutoff) }))
+    .filter(period => period.kind !== "passing" && period.end > period.start);
+  const saved = settings.adjust && settings.adjust.date === dayKey(today) ? settings.adjust : { shift: 0, endAt: "" };
+  const same = saved.shift === shift && (saved.endAt || "") === endAt;
+  const time = sec => fmtClock((sec + 86400) % 86400);
+  if (!changed.length) preview.textContent = "With these changes, no classes remain on the schedule.";
+  else if (!original.length) preview.textContent = "This schedule has no class periods to preview.";
+  else {
+    const firstOriginal = original[0].start + shift * 60, lastOriginal = original[original.length - 1].end + shift * 60;
+    const first = changed[0], last = changed[changed.length - 1];
+    preview.textContent = "Preview for " + label(schedule) + ": first class " + time(firstOriginal) +
+      (first.start !== firstOriginal ? " → " + time(first.start) : "") + "; last class ends " + time(lastOriginal) +
+      (last.end !== lastOriginal ? " → " + time(last.end) : "") + ".";
+  }
+  preview.dataset.pending = String(!same);
+  apply.disabled = same;
 }
 function dayHint() {
   const missing = DAYNAMES.filter((n, i) => !schedulesInSet().some(s => s.days.includes(i)));
@@ -1122,14 +1293,16 @@ function addRow(p) {
   // Labels are attached for assistive technology even when placeholders exist.
   const kind = p.kind === "passing" ? "passing" : "class", pass = kind === "passing";
   const n = mk("input", { type: "text", value: p.name, placeholder: pass ? "Passing time" : "Name", className: "f-n", maxLength: 40 });
-  const s = mk("input", { type: "time", value: p.start, className: "f-s" });
-  const e = mk("input", { type: "time", value: p.end, className: "f-e" });
+  const startInput = mk("input", { type: "time", value: p.start });
+  const endInput = mk("input", { type: "time", value: p.end });
+  const s = mk("label", { className: "time-field f-s" }, mk("span", { textContent: "Start" }), startInput);
+  const e = mk("label", { className: "time-field f-e" }, mk("span", { textContent: "End" }), endInput);
   const t = mk("input", { type: "text", value: p.teacher || "", placeholder: "Teacher (optional)", className: "f-t", maxLength: 40 });
   const r = mk("input", { type: "text", value: p.room || "", placeholder: "Room (optional)", className: "f-r", maxLength: 20 });
   const o = mk("input", { type: "text", value: p.note || "", placeholder: pass ? "Note (optional)" : "Note, e.g. “Welcome to school”", className: "f-o", maxLength: 120 });
   n.setAttribute("aria-label", pass ? "Passing period name" : "Period name");
-  s.setAttribute("aria-label", "Start time");
-  e.setAttribute("aria-label", "End time");
+  startInput.setAttribute("aria-label", "Start time");
+  endInput.setAttribute("aria-label", "End time");
   t.setAttribute("aria-label", "Teacher");
   r.setAttribute("aria-label", "Room");
   o.setAttribute("aria-label", "Note shown in the note box");
@@ -1158,9 +1331,22 @@ function commitRows() {
   // Commit only complete, non-overlapping schedules so a half-edited row cannot
   // replace the last valid schedule in storage.
   const rows = readRows(), res = check(rows);
-  if (!res.ok) { $("err").textContent = res.msg; return; }
+  if (!res.ok) {
+    $("err").textContent = res.msg + " Your latest edits are not saved; the previous valid schedule is still stored.";
+    $("editorPreview").textContent = "Preview updates after the schedule is valid.";
+    return;
+  }
   $("err").textContent = "";
-  ed().periods = byStart(rows); save(); lastKey = ""; tick();
+  ed().periods = byStart(rows); save(); renderEditorPreview(res.list); lastKey = ""; tick();
+}
+function renderEditorPreview(checked) {
+  const classes = checked.filter(period => period.kind !== "passing");
+  const preview = $("editorPreview");
+  if (!classes.length) { preview.textContent = "Add at least one class to preview the school day."; return; }
+  const time = seconds => fmtClock(seconds);
+  const total = Math.round((classes[classes.length - 1].end - classes[0].start) / 60);
+  preview.textContent = classes.length + (classes.length === 1 ? " class" : " classes") + " · " +
+    time(classes[0].start) + "–" + time(classes[classes.length - 1].end) + " · " + words(total * 60) + " across the day.";
 }
 const startKey = t => { const v = toSec(t); return v == null ? Infinity : v; };
 const byStart = rows => rows.map((r, i) => ({ r, i, k: startKey(r.start) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.r);
@@ -1198,6 +1384,7 @@ function buildSchedUI() {
   $("rows").textContent = "";
   sc.periods.forEach(addRow);
   $("err").textContent = "";
+  renderEditorPreview(check(sc.periods).list);
   $("del").disabled = schedulesInSet().length < 2;
   buildToday();
   buildDashboardControls();
@@ -1226,19 +1413,16 @@ $("today").onchange = e => {
   if (settings.override) settings.activeSetId = settings.editingSetId;
   viewScheduleId = settings.override ? settings.override.id : (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
   buildDashboardControls();
-  save(); lastKey = ""; tick();
+  save(); renderAdjustmentPreview(); lastKey = ""; tick();
 };
-function setAdjust() {
-  // Clamp shift values to the same range enforced by sanitize() for imported
-  // settings so manual editing and link imports behave alike.
-  let sh = Math.round(Number($("shift").value)); if (!Number.isFinite(sh)) sh = 0;
-  sh = Math.max(-180, Math.min(300, sh));
-  const ea = toSec($("endAt").value) != null ? $("endAt").value : "";
-  settings.adjust = sh || ea ? { date: dayKey(new Date()), shift: sh, endAt: ea } : null;
-  save(); lastKey = ""; tick();
-}
-$("shift").oninput = setAdjust;
-$("endAt").oninput = setAdjust;
+$("shift").oninput = $("endAt").oninput = renderAdjustmentPreview;
+$("applyToday").onclick = () => {
+  const shiftValue = Number($("shift").value);
+  const shift = Number.isFinite(shiftValue) ? Math.max(-180, Math.min(300, Math.round(shiftValue))) : 0;
+  const endAt = toSec($("endAt").value) != null ? $("endAt").value : "";
+  settings.adjust = shift || endAt ? { date: dayKey(new Date()), shift, endAt } : null;
+  save(); buildToday(); buildDashboardControls(); lastKey = ""; tick();
+};
 $("clearToday").onclick = () => {
   settings.override = null; settings.adjust = null;
   viewScheduleId = (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
@@ -1322,7 +1506,7 @@ function buildThemeUI() {
   // Populate native inputs from the current settings object. Input listeners
   // below keep those settings in sync as soon as the user changes a control.
   const pk = $("pickers"); pk.textContent = "";
-  for (const [k, name] of COLORS) {
+  for (const [k, name, description] of COLORS) {
     const inp = mk("input", { type: "color", id: "c_" + k });
     inp.setAttribute("aria-label", name + " color");
     inp.oninput = () => {
@@ -1334,7 +1518,9 @@ function buildThemeUI() {
       settings.theme.custom = c; settings.theme.preset = "custom";
       save(); applyTheme();
     };
-    pk.append(mk("label", { className: "pick" }, name, inp));
+    const copy = mk("span", { className: "pick-copy" },
+      mk("strong", { textContent: name }), mk("small", { textContent: description }));
+    pk.append(mk("label", { className: "pick" }, copy, inp));
   }
   $("fmt").value = settings.use24 ? "24" : "12";
   $("size").value = settings.size;
@@ -1596,6 +1782,22 @@ dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
 const feedbackDlg = $("feedbackDlg"), feedbackForm = $("feedbackForm");
 const feedbackStatus = $("feedbackStatus"), feedbackMessage = $("feedbackMessage");
 const feedbackCount = $("feedbackCount"), feedbackSubmit = $("sendFeedback");
+// Normalize common punctuation/number substitutions before matching whole words.
+// Keep this list aligned with the server-side list in feedback/Code.gs.
+const feedbackBlockedTerms = new Set([
+  "arse", "ass", "asshole", "bastard", "bitch", "bollocks", "bullshit", "clit", "cock", "cocksucker",
+  "coon", "crap", "cunt", "damn", "dick", "douche", "dyke", "fag", "faggot", "fuck", "gook",
+  "kike", "motherfucker", "nigger", "nigga", "piss", "pussy", "shit", "slut", "spic", "titty",
+  "twat", "wetback", "whore"
+]);
+function feedbackHasBlockedTerms(value) {
+  const normalized = String(value || "").toLowerCase()
+    .replace(/[0@]/g, "o").replace(/[1!|]/g, "i").replace(/[3]/g, "e")
+    .replace(/[4]/g, "a").replace(/[5$]/g, "s").replace(/[7]/g, "t")
+    .replace(/([a-z])[^a-z0-9\s]+(?=[a-z])/g, "$1")
+    .replace(/[^a-z]+/g, " ").trim();
+  return normalized.split(/\s+/).some(term => feedbackBlockedTerms.has(term));
+}
 const feedbackEndpoint = String(window.FEEDBACK_ENDPOINT || "").trim();
 const validFeedbackEndpoint = (() => {
   try {
@@ -1617,6 +1819,11 @@ feedbackForm.addEventListener("submit", async e => {
   e.preventDefault();
   const message = feedbackMessage.value.trim();
   if (!message) { feedbackMessage.focus(); return; }
+  if (feedbackHasBlockedTerms(message) || feedbackHasBlockedTerms($("feedbackName").value)) {
+    feedbackStatus.dataset.error = "true";
+    feedbackStatus.textContent = "Please remove profanity or slurs before sending feedback.";
+    return;
+  }
   if (!validFeedbackEndpoint) {
     feedbackStatus.dataset.error = "true";
     feedbackStatus.textContent = "Set up the Google Sheets feedback connection before sending feedback.";
@@ -1710,5 +1917,53 @@ document.addEventListener("keydown", e => {
 
 // ---- Initial render and live clock ----
 buildAll();
+enhanceSelects();
+syncAllCustomSelects();
+DAYNAMES.forEach((day, index) => {
+  const input = mk("input", { type: "checkbox", checked: index >= 1 && index <= 5 });
+  input.dataset.day = String(index);
+  $("setupDayChoices").append(mk("label", { className: "day" }, input, day));
+});
+$("setupForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const error = $("setupError"), days = [...$("setupDayChoices").querySelectorAll("input:checked")].map(input => Number(input.dataset.day));
+  const start = toSec($("setupStart").value);
+  const classes = Number($("setupClasses").value), length = Number($("setupLength").value);
+  const passing = Number($("setupPassing").value), lunch = Number($("setupLunch").value);
+  if (!days.length) { error.textContent = "Choose at least one school day."; return; }
+  if (start == null || !Number.isInteger(classes) || !Number.isInteger(length) || !Number.isInteger(passing) || !Number.isInteger(lunch)) {
+    error.textContent = "Enter a start time and whole-number schedule lengths."; return;
+  }
+  const periods = []; let cursor = start;
+  const lunchAfter = Math.ceil(classes / 2);
+  for (let i = 1; i <= classes; i++) {
+    const end = cursor + length * 60;
+    if (end > 23 * 3600 + 59 * 60) { error.textContent = "Those settings run past midnight. Try a shorter day."; return; }
+    periods.push({ name: "Period " + i, start: fromSec(cursor), end: fromSec(end), teacher: "", room: "", note: "", kind: "class" });
+    cursor = end;
+    if (i < classes) {
+      const breakLength = lunch > 0 && i === lunchAfter ? lunch : passing;
+      const breakName = lunch > 0 && i === lunchAfter ? "Lunch" : "Passing time";
+      if (breakLength > 0) {
+        const breakEnd = cursor + breakLength * 60;
+        if (breakEnd > 23 * 3600 + 59 * 60) { error.textContent = "Those settings run past midnight. Try a shorter day."; return; }
+        periods.push({ name: breakName, start: fromSec(cursor), end: fromSec(breakEnd), teacher: "", room: "", note: "", kind: "passing" });
+        cursor = breakEnd;
+      }
+    }
+  }
+  const current = settings.schedules[0];
+  const schedule = { ...current, name: "Regular day", days, passing, periods };
+  const checked = check(periods);
+  if (!checked.ok) { error.textContent = checked.msg; return; }
+  settings.schedules = [schedule];
+  settings.editing = schedule.id; settings.editingSetId = schedule.setId;
+  settings.activeSetId = schedule.setId; settings.compareSetId = "";
+  settings.override = null; settings.adjust = null;
+  viewScheduleId = null; compareViewScheduleId = null;
+  save(); buildAll(); $("setupDlg").close();
+});
+$("useSample").onclick = () => { save(); $("setupDlg").close(); };
+if (FIRST_RUN) $("setupDlg").showModal();
 checkHash();
 setInterval(tick, 500);

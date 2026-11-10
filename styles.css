@@ -280,6 +280,52 @@ input[type=text],input[type=time],input[type=number],select{
   font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
   border-radius:var(--rm); padding:9px 11px; min-width:0; min-height:42px;
 }
+select{
+  appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:42px;
+  border-color:color-mix(in srgb,var(--bar) 22%,var(--line));
+  background-color:color-mix(in srgb,var(--card) 88%,var(--bg));
+  background-image:
+    linear-gradient(45deg,transparent 50%,var(--muted) 50%),
+    linear-gradient(135deg,var(--muted) 50%,transparent 50%),
+    linear-gradient(var(--line),var(--line));
+  background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%,calc(100% - 34px) 50%;
+  background-size:5px 5px,5px 5px,1px 22px; background-repeat:no-repeat;
+  box-shadow:0 2px 6px color-mix(in srgb,var(--ink) 5%,transparent);
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+select:hover:not(:disabled){background-color:color-mix(in srgb,var(--bar) 7%,var(--card));border-color:color-mix(in srgb,var(--bar) 48%,var(--line))}
+select:disabled{cursor:not-allowed;opacity:.65}
+select option{background:var(--card);color:var(--ink);padding:8px}
+select option:checked{background:var(--hi);color:var(--hi-ink);font-weight:700}
+select optgroup{background:var(--card);color:var(--muted);font-weight:700}
+.native-select-source{display:none!important}
+.select-control{position:relative;display:block;width:100%;min-width:0}
+.select-trigger{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;min-height:42px;
+  padding:9px 38px 9px 12px;border:1px solid color-mix(in srgb,var(--bar) 22%,var(--line));border-radius:12px;
+  background-color:color-mix(in srgb,var(--card) 88%,var(--bg));color:var(--ink);text-align:left;font:inherit;font-weight:600;
+  box-shadow:0 2px 6px color-mix(in srgb,var(--ink) 5%,transparent);
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%),linear-gradient(var(--line),var(--line));
+  background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%,calc(100% - 34px) 50%;
+  background-size:5px 5px,5px 5px,1px 22px;background-repeat:no-repeat;cursor:pointer;transition:background-color .18s,border-color .18s,box-shadow .18s,transform .18s;
+}
+.select-trigger:hover:not(:disabled),.select-trigger[aria-expanded="true"]{background-color:color-mix(in srgb,var(--bar) 8%,var(--card));border-color:color-mix(in srgb,var(--bar) 52%,var(--line))}
+.select-trigger[aria-disabled="true"]{opacity:.6;cursor:not-allowed;pointer-events:none}
+.select-trigger:focus-visible{outline:3px solid color-mix(in srgb,var(--bar) 58%,transparent);outline-offset:3px}
+.select-menu{
+  position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:100%;max-height:min(280px,45vh);overflow:auto;padding:6px;
+  border:1px solid color-mix(in srgb,var(--bar) 30%,var(--line));border-radius:14px;
+  background:var(--card);color:var(--ink);box-shadow:0 16px 44px color-mix(in srgb,var(--scrim) 24%,transparent);
+  animation:selectMenuIn .16s cubic-bezier(.2,.8,.2,1) both;overscroll-behavior:contain
+}
+.select-menu[hidden]{display:none!important}
+.select-menu.opens-up{top:auto;bottom:calc(100% + 6px)}
+.select-option{padding:9px 11px;border-radius:9px;cursor:pointer;outline:0;font-size:.9rem;line-height:1.25}
+.select-option:hover,.select-option:focus-visible{background:color-mix(in srgb,var(--bar) 10%,var(--card))}
+.select-option[aria-selected="true"]{background:var(--hi);color:var(--hi-ink);font-weight:750}
+.select-option[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.select-group-label{padding:7px 10px 3px;color:var(--muted);font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+@keyframes selectMenuIn{from{opacity:0;transform:translateY(-4px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 input[type=number]{width:96px}
 .field{display:block}
 .field input{width:100%; margin-top:6px}
@@ -294,6 +340,9 @@ input[type=number]{width:96px}
 }
 .prow input{background:var(--card); border-color:color-mix(in srgb, var(--ink) 10%, var(--card))}
 .prow input:focus{background:var(--bg)}
+.time-field{display:grid;gap:3px;align-content:start;min-width:0}
+.time-field span{color:var(--muted);font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.time-field input{width:100%;padding-inline:8px}
 .prow.pass{grid-template-areas:"n s e x" "m m m m"; border-left:3px solid var(--go)}
 .prow.pass .f-t,.prow.pass .f-r{display:none}
 .f-n{grid-area:n}.f-s{grid-area:s}.f-e{grid-area:e}.f-x{grid-area:x}.f-t{grid-area:t}.f-r{grid-area:r}.f-o{grid-area:o}
@@ -316,7 +365,7 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .dashboard-set-controls{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:12px 0 2px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
 .dashboard-set-controls[hidden]{display:none}
 .dashboard-set-controls label{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.9rem; font-weight:700}
-.dashboard-set-controls select{width:auto; min-width:160px}
+.dashboard-set-controls select,.dashboard-set-controls .select-control{width:auto; min-width:160px}
 .set-manager{margin:16px 0 20px; padding:14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 3%,var(--card))}
 .set-manager > .label{margin-top:0}
 .set-tabs .tab[aria-pressed="true"]{background:var(--hi); color:var(--hi-ink); border-color:var(--hi)}
@@ -361,6 +410,20 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .compare-periods .period-meta:empty{display:none}
 .compare-periods li.current .period-time{color:var(--hi-ink)}
 .compare-periods li.current .period-meta{color:var(--hi-ink)}
+.adjust-preview{margin:10px 0;padding:11px 13px;border:1px solid color-mix(in srgb,var(--bar) 24%,var(--line));border-radius:var(--rm);background:color-mix(in srgb,var(--bar) 5%,var(--card));font-size:.88rem;font-weight:650;line-height:1.45}
+.adjust-preview:empty{display:none}
+.adjust-preview[data-pending="true"]::after{content:" Not applied yet.";color:var(--muted);font-weight:500}
+.setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.setup-grid .field{min-width:0}
+.setup-grid input{width:100%;margin-top:5px}
+.setup-days{margin:16px 0;padding:12px;border:1px solid var(--line);border-radius:var(--rm)}
+.setup-days legend{padding:0 6px;font-weight:750}
+.setup-days .days{gap:7px}
+#setupDlg .btns{margin-top:18px}
+.opt .select-control{width:min(240px,48%)}
+.dashboard-set-controls .select-control{min-width:160px}
+.ring-panel-head .select-control{width:min(100%,250px)}
+#feedbackForm .select-control{width:100%;margin-top:6px}
 @media (max-width:560px){.week-comparison{grid-template-columns:1fr}.dashboard-set-controls label{width:100%; justify-content:space-between}.dashboard-set-controls select{width:55%}}
 /* Settings controls, schedule editor, and appearance presets. */
 .days{display:flex; flex-wrap:wrap; gap:8px}
@@ -403,12 +466,16 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
   background:var(--hi); color:var(--hi-ink); border-color:var(--hi);
   box-shadow:0 6px 18px -8px color-mix(in srgb, var(--hi) 70%, transparent);
 }
-.pickers{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:14px}
-.pick{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.pickers{display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr)); gap:10px; margin-top:14px}
+.pick{display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:70px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--card) 85%,var(--bg))}
+.pick-copy{display:grid; gap:3px; min-width:0}
+.pick-copy strong{font-size:.88rem; line-height:1.25}
+.pick-copy small{color:var(--muted); font-size:.76rem; line-height:1.35; font-weight:500}
+.pick input[type="color"]{flex:0 0 42px; width:42px; height:38px; padding:3px; border:1px solid var(--line); border-radius:8px; background:var(--bg); cursor:pointer}
 input[type=color]{width:44px; height:34px; padding:0; border:1px solid var(--line); border-radius:var(--rm); background:none; cursor:pointer}
 .opts{display:grid; gap:10px; margin-top:10px}
 .opt{display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); min-height:42px}
-.opt select,.opt input:not([type=checkbox]){width:min(240px,48%); flex:none}
+.opt select,.opt .select-control,.opt input:not([type=checkbox]){width:min(240px,48%); flex:none}
 input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi); cursor:pointer}
 .today{margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
 .today summary,.period-details summary,.advanced-actions summary,.advanced-options summary,.week-preview summary{cursor:pointer; color:var(--ink); font-weight:700; padding:4px 0}
@@ -442,7 +509,7 @@ button{user-select:none; -webkit-tap-highlight-color:transparent}
   .top .r #clock{grid-column:1/-1; white-space:nowrap; font-size:.72rem; letter-spacing:-.02em}
 }
 @media (max-width:480px){
-  .opt select,.opt input:not([type=checkbox]){width:46%}
+  .opt select,.opt .select-control,.opt input:not([type=checkbox]){width:46%}
   .appearance{gap:6px}.appearance button{padding:10px}
 }
 
@@ -517,7 +584,8 @@ li{transition:background-color .2s ease,color .2s ease,opacity .2s ease,box-shad
 .ring-panel{padding:12px 12px 2px}
 .ring-panel-head{margin-bottom:8px}
 .ring-panel-head strong{font-size:.8rem;text-transform:uppercase;letter-spacing:.11em}
-.ring-panel-head select{border-radius:11px;background:color-mix(in srgb,var(--ink) 3%,var(--card))}
+.ring-panel-head select,.ring-panel-head .select-control{width:min(100%,250px)}
+.ring-panel-head .select-trigger{min-height:36px;padding:5px 36px 5px 10px;border-radius:11px;background-color:color-mix(in srgb,var(--ink) 3%,var(--card));font-size:.82rem;text-align:center}
 .ringwrap{width:min(300px,72vw)}
 .trk{stroke:color-mix(in srgb,var(--bar) 10%,var(--bg));stroke-width:10}
 .prog{stroke-width:11;filter:drop-shadow(0 5px 9px color-mix(in srgb,var(--glow-now) 32%,transparent))}
@@ -630,7 +698,7 @@ li.cur{animation:currentPeriodIn .32s cubic-bezier(.2,.8,.2,1) both}
   .stat span{letter-spacing:.035em}
   .dashboard-set-controls{align-items:stretch}
   .dashboard-set-controls label{flex:1 1 100%;justify-content:space-between}
-  .dashboard-set-controls select{flex:1 1 50%;min-width:0}
+  .dashboard-set-controls select,.dashboard-set-controls .select-control{flex:1 1 50%;min-width:0}
   dialog{width:calc(100% - 12px);max-height:calc(100dvh - 16px);margin:8px auto;border-radius:20px}
   .dhead{padding:12px 14px}
   .dbody{padding:4px 14px 18px}
@@ -643,7 +711,8 @@ li.cur{animation:currentPeriodIn .32s cubic-bezier(.2,.8,.2,1) both}
   .top .r{gap:4px}
   .icon{width:34px;height:36px}
   .stats{grid-template-columns:1fr}
-  .ring-panel-head select{max-width:100%}
+  .ring-panel-head select,.ring-panel-head .select-control{max-width:100%}
+  .ring-panel-head .select-trigger{font-size:.74rem;padding-inline:6px;min-height:34px}
 }
 /* Live-state labels, list animation, and feedback form. */
 .now::before{content:"SCHOOL DAY"}

@@ -1,9 +1,14 @@
 /*
   School Schedule
   ===============
-  The static page loads styles.css and app.js without a build step.
-  The app is organized around one settings object: storage loads it,
-  controls edit it, and tick() derives the live dashboard from it.
+  Browser-only app, loaded after feedback-config.js. No build step.
+
+  Source map:
+  defaults/helpers -> validation/storage -> group controls -> themes/display
+  -> clock/effects -> dashboard/comparison -> editor -> import/export -> events
+
+  settings is the persisted source of truth. UI handlers edit and save it;
+  tick() derives the live dashboard without rewriting schedule data.
 */
 // ---- Defaults and supported appearance options ----
 const DEFAULTS = {
@@ -253,6 +258,7 @@ function activeSchedule(d) {
   return { sc, forced: Boolean(override && sc.id === override.id) };
 }
 
+// ---- Dashboard schedule-group controls ----
 // Schedules assigned to a weekday appear together in previews and set
 // comparisons. More than one schedule may be assigned to any weekday.
 function schedulesForDay(d, setId = settings.activeSetId) { return settings.schedules.filter(sc => sc.setId === setId && sc.days.includes(d.getDay())); }
@@ -546,12 +552,19 @@ function confetti() {
   }
   setTimeout(() => { box.textContent = ""; }, 6000);
 }
-$("hero").addEventListener("animationend", e => { if (e.animationName === "flash") e.currentTarget.classList.remove("flash"); });
+$("hero").addEventListener("animationend", e => {
+  const hero = e.currentTarget;
+  if (e.animationName === "riseIn") hero.dataset.introDone = "true";
+  if (e.animationName === "flash") {
+    hero.classList.remove("flash");
+    hero.dataset.introDone = "true";
+  }
+});
 // Browsers only let a page make sound after a tap, so unlock audio on the first one
 addEventListener("pointerdown", () => audio(), { once: true });
 addEventListener("keydown", () => audio(), { once: true });
 
-// ---- Dashboard rendering ----
+// ---- Today's schedule list and weekly comparison ----
 function renderList(daySchedules, d, now) {
   // Render every schedule assigned to today as its own clearly labeled group.
   // The ring can still preview one schedule; the day list should not hide the
@@ -804,6 +817,7 @@ function updateComparisonRings(today, now, activeSchedule) {
   if (active) {
     const own = scheduleSnapshot(active, today, now);
     $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, own.progress || 0)) / 100);
+    $("ringProgress").setAttribute("aria-valuenow", String(Math.round(Math.min(100, Math.max(0, own.progress || 0)))));
   }
   const comparedSet = settings.sets.find(set => set.id === settings.compareSetId);
   const compared = settings.schedules.find(schedule => schedule.id === compareViewScheduleId && schedule.setId === settings.compareSetId);
@@ -813,6 +827,7 @@ function updateComparisonRings(today, now, activeSchedule) {
     $("compareRingUnit").textContent = "No schedule";
     $("compareRingPct").textContent = "";
     $("compareRing").style.strokeDashoffset = RING;
+    $("compareRingProgress").setAttribute("aria-valuenow", "0");
     return;
   }
   const snapshot = scheduleSnapshot(compared, today, now);
@@ -820,6 +835,7 @@ function updateComparisonRings(today, now, activeSchedule) {
   $("compareRingUnit").textContent = snapshot.unit || snapshot.status;
   $("compareRingPct").textContent = snapshot.progress == null ? "" : Math.floor(snapshot.progress) + "% through period";
   $("compareRing").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, snapshot.progress || 0)) / 100);
+  $("compareRingProgress").setAttribute("aria-valuenow", String(Math.round(Math.min(100, Math.max(0, snapshot.progress || 0)))));
 }
 function renderSetComparison(today, now) {
   const panel = $("comparison");
@@ -833,6 +849,7 @@ function renderSetComparison(today, now) {
   updateSetComparisonLive(today, now);
 }
 
+// ---- Live dashboard update loop ----
 function tick() {
   // The single clock loop derives today's active schedule, current period,
   // countdown, alerts, progress ring, and page title from the current time.
@@ -979,6 +996,7 @@ function tick() {
   $("det").textContent = detTxt;
   $("nextLine").textContent = nextLine;
   $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  $("ringProgress").setAttribute("aria-valuenow", String(Math.round(Math.min(100, Math.max(0, pct)))));
   updateComparisonRings(d, now, sc);
   $("schoolLeft").textContent = sLeft;
   $("schoolPct").textContent = P ? Math.floor(Math.min(100, sPct)) + "% through the day" : "";
@@ -1184,6 +1202,7 @@ function buildSchedUI() {
   buildToday();
   buildDashboardControls();
 }
+// ---- Schedule editor input and validation events ----
 // Delegate input handling from the stable container because period rows are
 // created and removed dynamically.
 $("rows").addEventListener("input", commitRows);
@@ -1551,7 +1570,7 @@ $("bImport").onclick = () => { try { requestImport(pendingShare); } catch (e) { 
 $("bDismiss").onclick = () => { pendingShare = null; $("banner").hidden = true; clearHash(); };
 addEventListener("hashchange", checkHash);
 
-// ---- Dialog lifecycle, reset, and startup ----
+// ---- Dialog lifecycle and reset ----
 function buildAll() {
   // Build controls before applying appearances so palette inputs and UI labels
   // exist when the current settings are pushed into the page.
@@ -1572,7 +1591,74 @@ $("gear").onclick = () => dlg.showModal();
 $("close").onclick = $("done2").onclick = () => dlg.close();
 dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
 
-// Keyboard shortcuts act only on the page itself. Editing controls, modified
+// ---- Feedback form submission ----
+// The optional name is the only identifying field the app sends to the sheet.
+const feedbackDlg = $("feedbackDlg"), feedbackForm = $("feedbackForm");
+const feedbackStatus = $("feedbackStatus"), feedbackMessage = $("feedbackMessage");
+const feedbackCount = $("feedbackCount"), feedbackSubmit = $("sendFeedback");
+const feedbackEndpoint = String(window.FEEDBACK_ENDPOINT || "").trim();
+const validFeedbackEndpoint = (() => {
+  try {
+    const u = new URL(feedbackEndpoint);
+    return u.protocol === "https:" && u.hostname === "script.google.com" && /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname);
+  } catch (e) { return false; }
+})();
+$("openFeedback").onclick = () => {
+  feedbackStatus.dataset.error = String(!validFeedbackEndpoint);
+  feedbackStatus.textContent = validFeedbackEndpoint ? "" : "The Google Sheets feedback connection is not set up yet.";
+  feedbackDlg.showModal();
+};
+$("feedbackClose").onclick = () => feedbackDlg.close();
+feedbackDlg.addEventListener("click", e => { if (e.target === feedbackDlg) feedbackDlg.close(); });
+feedbackMessage.addEventListener("input", () => {
+  feedbackCount.textContent = feedbackMessage.value.length + " / 1200";
+});
+feedbackForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const message = feedbackMessage.value.trim();
+  if (!message) { feedbackMessage.focus(); return; }
+  if (!validFeedbackEndpoint) {
+    feedbackStatus.dataset.error = "true";
+    feedbackStatus.textContent = "Set up the Google Sheets feedback connection before sending feedback.";
+    return;
+  }
+  if ($("feedbackWebsite").value) {
+    feedbackStatus.dataset.error = "false";
+    feedbackStatus.textContent = "Thanks for your feedback.";
+    feedbackForm.reset(); feedbackCount.textContent = "0 / 1200";
+    return;
+  }
+  feedbackSubmit.disabled = true;
+  feedbackStatus.dataset.error = "false";
+  feedbackStatus.textContent = "Sending…";
+  const payload = {
+    type: $("feedbackType").value,
+    message: message.slice(0, 1200),
+    name: $("feedbackName").value.trim().slice(0, 60),
+    website: ""
+  };
+  try {
+    const response = await fetch(feedbackEndpoint, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+    if (response.type !== "opaque") {
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || "Could not save feedback.");
+    }
+    feedbackStatus.textContent = "Thanks — your feedback was sent. Check the Feedback tab if you want to confirm it arrived.";
+    feedbackForm.reset(); feedbackCount.textContent = "0 / 1200";
+  } catch (error) {
+    feedbackStatus.dataset.error = "true";
+    feedbackStatus.textContent = error.message && error.message !== "Failed to fetch"
+      ? error.message : "Could not send feedback. Check your connection and try again.";
+  } finally { feedbackSubmit.disabled = false; }
+});
+
+// ---- Keyboard shortcuts ----
+// Shortcuts act only on the page itself. Editing controls, modified
 // key combinations, and open dialogs keep their normal browser behavior.
 const keysDlg = $("keysDlg");
 $("helpKeys").onclick = () => keysDlg.showModal();
@@ -1588,7 +1674,8 @@ document.addEventListener("keydown", e => {
   } else if (e.key === "?") keysDlg.showModal();
 });
 
-// Settings tabs keep the dialog compact. Remember the last section locally, but
+// ---- Settings tab navigation ----
+// Tabs keep the dialog compact. Remember the last section locally, but
 // fall back to Schedules when storage contains an unknown tab name.
 (function () {
   const bar = $("stabs"); if (!bar) return;
@@ -1621,6 +1708,7 @@ document.addEventListener("keydown", e => {
   show(start);
 })();
 
+// ---- Initial render and live clock ----
 buildAll();
 checkHash();
 setInterval(tick, 500);

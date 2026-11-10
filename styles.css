@@ -4,16 +4,20 @@
   Theme colors and spacing live on :root so every component can share the same
   palette. Data attributes on :root and individual cards are the small state
   API used by JavaScript; they let the stylesheet react without rebuilding UI.
+
+  Sections: tokens/base layout -> dashboard -> dialogs/editor -> comparison
+  and settings controls -> accessibility -> palette/design overrides -> final
+  responsive refinements -> live-state and feedback details.
 */
 :root{
   --bg:#eef1f4; --card:#ffffff; --ink:#14213d; --hi:#ffd23f; --bar:#14213d; --hi-ink:#14161c; --warn:#c2410c;
   --go:#0b8a74; --gold:#d99a00; --danger:#d62828; --on-warn:#ffffff; --on-danger:#ffffff; --scrim:#000000;
-  --rc:20px; --rm:10px; --rs:12px; --ringw:12;
-  --space-1:6px; --space-2:10px; --space-3:14px;
+  --rc:24px; --rm:16px; --rs:13px; --ringw:12;
+  --space-3:14px;
   --accent:var(--bar); --glow:var(--hi); --glow-now:var(--glow); --hype:0;
-  --line:color-mix(in srgb, var(--ink) 14%, var(--bg));
+  --line:color-mix(in srgb,color-mix(in srgb,var(--ink) 14%,var(--bg)),var(--bar) 20%);
   --muted:color-mix(in srgb, var(--ink) 62%, var(--bg));
-  --shadow:0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent), 0 8px 24px -20px color-mix(in srgb, var(--ink) 28%, transparent);
+  --shadow:0 2px 4px color-mix(in srgb,var(--ink) 4%,transparent),0 18px 44px -30px color-mix(in srgb,var(--bar) 36%,transparent);
   --font:ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,sans-serif;
   color-scheme:light;
   accent-color:var(--bar);
@@ -30,21 +34,28 @@ html{height:100%}
 body{
   margin:0; min-height:100%; color:var(--ink); font-family:var(--font); line-height:1.4;
   background-color:var(--bg);
-  background-image:radial-gradient(90% 460px at 50% 0, color-mix(in srgb, var(--glow) 12%, transparent), transparent);
-  background-repeat:no-repeat;
-  padding:max(18px,env(safe-area-inset-top,0px)) 18px max(30px,env(safe-area-inset-bottom,0px));
+  background-image:
+    radial-gradient(90% 480px at 8% 0,color-mix(in srgb,var(--hi) 25%,transparent),transparent 74%),
+    radial-gradient(72% 520px at 100% 100%,color-mix(in srgb,var(--bar) 16%,transparent),transparent 78%);
+  background-attachment:fixed;
+  padding:clamp(20px,4vw,52px) clamp(16px,4vw,48px) max(36px,env(safe-area-inset-bottom,0px));
+  transition:background-color .45s ease,background-image .45s ease,color .35s ease;
 }
-main{width:min(100%,1440px); margin:0 auto; animation:mainIn .5s cubic-bezier(.22,1,.36,1) both}
+main{width:min(100%,1180px); margin:0 auto; animation:mainIn .5s cubic-bezier(.22,1,.36,1) both}
 body::before{
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:radial-gradient(90% 520px at 50% 0, color-mix(in srgb, var(--glow-now) 34%, transparent), transparent);
   opacity:calc(var(--hype) * .35); transition:opacity .8s;
 }
 :root[data-bg="flat"] body{background-image:none}
-:root[data-bg="gradient"] body{background-image:linear-gradient(160deg, color-mix(in srgb, var(--glow) 24%, var(--bg)), var(--bg) 55%, color-mix(in srgb, var(--bar) 14%, var(--bg)))}
-.card{background:var(--card); border:1px solid var(--line); border-radius:var(--rc); box-shadow:var(--shadow)}
-/* Wide screens give the live clock and today's plan room side by side. */
-main{display:grid; grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr); grid-template-areas:"top top" "controls controls" "banner banner" "import import" "focus plan" "comparison comparison"; gap:0 28px; max-width:1440px}
+:root[data-bg="gradient"] body{
+  background-image:
+    radial-gradient(80% 460px at 0 0,color-mix(in srgb,var(--hi) 31%,transparent),transparent 76%),
+    linear-gradient(155deg,color-mix(in srgb,var(--bar) 22%,var(--bg)),var(--bg) 56%,color-mix(in srgb,var(--hi) 17%,var(--bg)));
+}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--rc); box-shadow:var(--shadow); transition:background-color .4s ease,border-color .4s ease,box-shadow .4s ease}
+/* Dashboard layout and shared page regions. */
+main{display:grid; grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr); grid-template-areas:"top top" "controls controls" "banner banner" "import import" "focus plan" "comparison comparison"; gap:0 clamp(18px,3vw,36px); max-width:1180px}
 main > .top{grid-area:top}
 main > .dashboard-set-controls{grid-area:controls}
 main > .banner{grid-area:banner}
@@ -71,6 +82,7 @@ main ol{animation-delay:.22s}
 @keyframes mainIn{from{opacity:0} to{opacity:1}}
 @keyframes riseIn{from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)}}
 
+/* Header, import notices, and live dashboard. */
 .top{display:flex; justify-content:space-between; align-items:center; gap:12px}
 .top .l{display:flex; flex-direction:column; gap:6px; align-items:flex-start; min-width:0}
 .top .r{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; font-weight:600}
@@ -130,7 +142,6 @@ main[data-comparing="true"] .ring-pair{width:min(600px,100%); margin:0 auto; gap
 main[data-comparing="true"] .ring-pair.is-comparing .ring-panel{padding:6px}
 main[data-comparing="true"] .ring-pair.is-comparing .ringwrap{width:min(220px,100%)}
 @media(max-width:520px){.ring-pair.is-comparing{gap:6px}.ring-pair.is-comparing .ring-panel{padding:5px}.ring-panel-head{font-size:.72rem}.ring-panel-head strong{font-size:.78rem}.ring-panel-head select{font-size:.74rem;padding-inline:5px;min-height:34px}.ring-pair.is-comparing .count{font-size:clamp(1rem,6vw,1.45rem)}.ring-pair.is-comparing .unit{font-size:.68rem}.ring-pair.is-comparing .pct{font-size:.68rem}}
-@media(prefers-reduced-motion:reduce){.ring-pair,.ring-panel{transition:none;animation:none}}
 .trk{fill:none; stroke:var(--line); stroke-width:var(--ringw)}
 .prog{
   fill:none; stroke:var(--accent); stroke-width:var(--ringw); stroke-linecap:round;
@@ -193,7 +204,7 @@ main[data-comparing="true"] .ring-pair.is-comparing .ringwrap{width:min(220px,10
 .stat{padding:16px 16px 14px}
 .stat b{display:block; font-size:1.45rem; line-height:1.2; font-variant-numeric:tabular-nums}
 .stat span{color:var(--muted); font-size:.9rem}
-.stat .pct,.stat .det{font-size:.92rem}
+.stat .pct{font-size:.92rem}
 .stat[data-final="1"]{border-color:var(--hi); box-shadow:0 0 0 2px color-mix(in srgb, var(--hi) 35%, transparent), var(--shadow)}
 .stat[data-final="2"]{border-color:var(--warn); box-shadow:0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent), var(--shadow)}
 
@@ -217,7 +228,7 @@ li.pass{padding:7px 14px; font-size:.88rem; color:var(--muted); font-weight:500}
 li.pass.cur{background:color-mix(in srgb, var(--hi) 55%, var(--card)); color:var(--hi-ink); font-weight:700}
 li.pass.cur .t{color:var(--hi-ink)}
 
-/* Settings dialog: its sticky header stays available while longer forms scroll. */
+/* Settings and other native dialog shells. */
 dialog{
   width:min(820px,calc(100% - 20px)); max-height:90vh; padding:0; overflow:auto;
   border:1px solid var(--line); border-radius:var(--rc); background:var(--card); color:var(--ink); font-family:var(--font);
@@ -240,8 +251,6 @@ dialog::backdrop{
 }
 .dhead h2{margin:0; font-size:1.25rem}
 .dbody{padding:4px 18px 20px}
-.dbody h3{margin:0; padding-top:18px; font-size:1.1rem}
-.dbody > h3:not(:first-child){margin-top:24px; border-top:1px solid var(--line)}
 .hint{color:var(--muted); font-size:.9rem; margin:4px 0 10px}
 .stabs{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:2px 0 16px; padding-bottom:14px; border-bottom:1px solid var(--line)}
 .stab{
@@ -303,6 +312,7 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
 .err{color:var(--danger); font-weight:600; margin:4px 0 6px; min-height:1.2em}
 .tabs{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 6px}
+/* Group controls and weekly comparison cards. */
 .dashboard-set-controls{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:12px 0 2px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
 .dashboard-set-controls[hidden]{display:none}
 .dashboard-set-controls label{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.9rem; font-weight:700}
@@ -352,6 +362,7 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .compare-periods li.current .period-time{color:var(--hi-ink)}
 .compare-periods li.current .period-meta{color:var(--hi-ink)}
 @media (max-width:560px){.week-comparison{grid-template-columns:1fr}.dashboard-set-controls label{width:100%; justify-content:space-between}.dashboard-set-controls select{width:55%}}
+/* Settings controls, schedule editor, and appearance presets. */
 .days{display:flex; flex-wrap:wrap; gap:8px}
 .appearance{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:12px 0 22px}
 .appearance button{display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); color:var(--ink); background:var(--card); text-align:left}
@@ -368,8 +379,7 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .custom-colors summary{font-weight:700; cursor:pointer}
 .week-overview{display:grid; grid-template-columns:repeat(7,minmax(120px,1fr)); gap:7px; margin:12px 0 18px; overflow-x:auto; padding:8px 0 12px; border-bottom:1px solid var(--line)}
 .week-day{min-width:0; padding:9px 6px; border:1px solid var(--line); border-radius:var(--rs); background:var(--bg); text-align:center}
-.week-day strong{display:block}
-.week-day strong{font-size:.82rem}
+.week-day strong{display:block;font-size:.82rem}
 .week-day-list{display:grid; gap:4px; margin-top:6px}
 .week-day-list span{display:block; overflow-wrap:anywhere; padding:3px 5px; border-radius:6px; background:color-mix(in srgb,var(--ink) 5%,var(--card)); color:var(--muted); font-size:.72rem; line-height:1.25}
 .week-day-list .week-day-empty{background:none; font-style:italic}
@@ -420,7 +430,6 @@ button:not(:disabled):not(.alt):not(.x):not(.icon):not(.stab):not(.tab):not(.the
 button.alt:not(:disabled):hover,button.x:not(:disabled):hover{background:color-mix(in srgb,var(--ink) 7%,var(--card))}
 button:not(:disabled):active{transform:scale(.96)}
 button{user-select:none; -webkit-tap-highlight-color:transparent}
-li.cur{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--hi) 60%, transparent), 0 6px 18px -8px color-mix(in srgb, var(--hi) 60%, transparent)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important; transition:none !important}}
 @media (max-width:560px){
   body{overflow-x:hidden}
@@ -461,28 +470,9 @@ li{transition:background-color .2s ease,color .2s ease,opacity .2s ease,box-shad
   .hero{padding-inline:12px}
   .stat{padding:14px}
 }
-@media(prefers-reduced-motion:reduce){.skip-link{transition:none}}
 
 
-/* Let the chosen palette shape the whole experience, not only selected chips. */
-:root{
-  --line:color-mix(in srgb,color-mix(in srgb,var(--ink) 14%,var(--bg)),var(--bar) 20%);
-  --shadow:0 2px 5px color-mix(in srgb,var(--bar) 9%,transparent),0 12px 30px -22px color-mix(in srgb,var(--bar) 38%,transparent);
-}
-body{
-  background-image:
-    radial-gradient(90% 480px at 8% 0,color-mix(in srgb,var(--hi) 25%,transparent),transparent 74%),
-    radial-gradient(72% 520px at 100% 100%,color-mix(in srgb,var(--bar) 16%,transparent),transparent 78%);
-  background-attachment:fixed;
-  transition:background-color .45s ease,background-image .45s ease,color .35s ease;
-}
-:root[data-bg="flat"] body{background-image:none}
-:root[data-bg="gradient"] body{
-  background-image:
-    radial-gradient(80% 460px at 0 0,color-mix(in srgb,var(--hi) 31%,transparent),transparent 76%),
-    linear-gradient(155deg,color-mix(in srgb,var(--bar) 22%,var(--bg)),var(--bg) 56%,color-mix(in srgb,var(--hi) 17%,var(--bg)));
-}
-.card{transition:background-color .4s ease,border-color .4s ease,box-shadow .4s ease}
+/* Palette-aware component treatments. Base colors and canvas live above. */
 .hero{
   border-top:4px solid var(--bar);
   background:linear-gradient(145deg,color-mix(in srgb,var(--hi) 14%,var(--card)),var(--card) 68%);
@@ -493,7 +483,6 @@ body{
   border-top:2px solid color-mix(in srgb,var(--bar) 38%,var(--line));
 }
 #list{background:color-mix(in srgb,var(--bar) 7%,var(--card))}
-li.cur{background:var(--hi); box-shadow:inset 4px 0 0 color-mix(in srgb,var(--bar) 42%,var(--hi)),0 8px 22px -10px color-mix(in srgb,var(--hi) 72%,transparent)}
 .dashboard-set-controls,.set-manager,.today,.compare-set-column{
   border-color:color-mix(in srgb,var(--bar) 24%,var(--line));
   background:color-mix(in srgb,var(--bar) 5%,var(--card));
@@ -506,4 +495,188 @@ li.cur{background:var(--hi); box-shadow:inset 4px 0 0 color-mix(in srgb,var(--ba
 .theme-preview i:nth-child(2){height:42px;box-shadow:0 0 18px color-mix(in srgb,var(--hi) 55%,transparent)}
 .theme-card[aria-pressed="true"] .theme-preview{outline:2px solid var(--bar);outline-offset:2px}
 .prog{filter:drop-shadow(0 0 7px color-mix(in srgb,var(--glow-now) 68%,transparent))}
-@media(prefers-reduced-motion:reduce){body,.card{transition:none}}
+
+/* Final desktop design overrides. Keep these after base component rules. */
+.top{padding:0 2px 18px;border-bottom:1px solid color-mix(in srgb,var(--ink) 9%,transparent)}
+#date{font-size:clamp(1rem,2vw,1.2rem);letter-spacing:-.02em}
+.top .r{gap:12px}
+.top .r #clock{font-size:.9rem;color:var(--muted);font-weight:700}
+.icon{width:42px;height:42px;border-radius:14px;background:var(--card);box-shadow:var(--shadow)}
+.dashboard-set-controls{margin-top:16px;padding:10px 14px;border-radius:16px;box-shadow:var(--shadow)}
+.dashboard-focus .hero{margin-top:24px}
+.hero{
+  min-height:500px;padding:24px 24px 26px;border:1px solid color-mix(in srgb,var(--bar) 12%,var(--line));
+  border-top:0;border-radius:28px;text-align:center;
+  background:radial-gradient(ellipse at 50% 4%,color-mix(in srgb,var(--hi) 21%,transparent),transparent 58%),linear-gradient(155deg,color-mix(in srgb,var(--bar) 5%,var(--card)),var(--card) 56%);
+  box-shadow:0 22px 54px -36px color-mix(in srgb,var(--bar) 42%,transparent),inset 0 1px 0 color-mix(in srgb,var(--ink) 4%,transparent);
+}
+.hero::before{inset:auto 18% 0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bar) 20%,transparent),transparent)}
+.now{font-size:clamp(1.35rem,2.4vw,1.9rem);letter-spacing:-.04em}
+.now::before{content:"LIVE SCHOOL DAY";display:block;width:max-content;margin:0 auto 12px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--go) 25%,transparent);border-radius:99px;background:color-mix(in srgb,var(--go) 9%,var(--card));color:var(--go);font-size:.64rem;font-weight:850;letter-spacing:.15em}
+.ring-pair{margin:20px auto 12px}
+.ring-panel{padding:12px 12px 2px}
+.ring-panel-head{margin-bottom:8px}
+.ring-panel-head strong{font-size:.8rem;text-transform:uppercase;letter-spacing:.11em}
+.ring-panel-head select{border-radius:11px;background:color-mix(in srgb,var(--ink) 3%,var(--card))}
+.ringwrap{width:min(300px,72vw)}
+.trk{stroke:color-mix(in srgb,var(--bar) 10%,var(--bg));stroke-width:10}
+.prog{stroke-width:11;filter:drop-shadow(0 5px 9px color-mix(in srgb,var(--glow-now) 32%,transparent))}
+.count{font-size:clamp(3.2rem,7vw,4.6rem);font-weight:780;letter-spacing:-.075em}
+.unit{margin-top:9px;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}
+.pct{font-size:.82rem;color:var(--muted)}
+.sub{margin-top:8px;font-size:.98rem}
+.det{margin-top:7px;font-size:1.05rem;letter-spacing:-.02em}
+.next{margin-top:9px;font-size:.85rem}
+.badge{margin-top:14px;padding:7px 14px;font-size:.78rem;letter-spacing:.02em}
+.stats{gap:12px;margin-top:14px}
+.stat{min-height:116px;padding:18px;border-radius:19px;border:1px solid var(--line);border-top:1px solid var(--line);background:linear-gradient(145deg,color-mix(in srgb,var(--bar) 4%,var(--card)),var(--card) 80%)}
+.stat b{font-size:1.65rem;letter-spacing:-.05em}
+.stat span{font-size:.76rem;letter-spacing:.07em;text-transform:uppercase;font-weight:750}
+.notetxt{font-size:.98rem}
+.today-plan{padding-top:8px}
+.today-plan>h2{display:flex;align-items:center;gap:10px;margin:24px 4px 14px;font-size:1.25rem;letter-spacing:-.035em}
+.today-plan>h2::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--go);box-shadow:0 0 0 5px color-mix(in srgb,var(--go) 12%,transparent)}
+#list{padding:10px;border:1px solid var(--line);border-radius:24px;background:color-mix(in srgb,var(--card) 78%,var(--bg));box-shadow:var(--shadow)}
+li{position:relative;min-height:62px;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--ink) 6%,transparent);border-radius:14px}
+li:last-child{border-bottom:0}
+li .nm{font-weight:720;letter-spacing:-.015em}
+li .dt{margin-top:3px;font-size:.78rem}
+li .t{font-size:.82rem;font-weight:650}
+li.done{opacity:.48}
+li.cur{margin:4px 0;padding:14px 16px;background:color-mix(in srgb,var(--hi) 67%,var(--card))}
+li.pass{min-height:40px;border-bottom:0;font-size:.78rem}
+li.schedule-heading{margin:14px 8px 4px;padding:16px 8px 8px;font-size:.7rem;letter-spacing:.15em}
+.banner{margin-top:16px;border-radius:18px}
+.set-comparison{margin-top:28px}
+main[data-comparing="true"] .dashboard-focus .hero{min-height:0}
+dialog{border-radius:24px;box-shadow:0 32px 100px color-mix(in srgb,var(--scrim) 24%,transparent)}
+.stabs{justify-content:flex-start;position:sticky;top:68px;z-index:1;background:var(--card);padding:12px 0}
+button{border-radius:13px}
+input,select{border-radius:12px}
+@media(max-width:780px){
+  body{padding:20px 16px max(32px,env(safe-area-inset-bottom,0px))}
+  main{max-width:680px;gap:0}
+  .dashboard-focus .hero{margin-top:20px}
+  .hero{min-height:0;padding:22px 18px 24px}
+  .ringwrap{width:min(270px,72vw)}
+}
+@media(max-width:560px){
+  body{padding-inline:14px}
+  main{width:100%;max-width:680px}
+  .top{display:flex;align-items:center;padding-bottom:14px}
+  .top .r{display:flex;width:auto;min-width:0;gap:7px}
+  .top .r #clock{font-size:.76rem}
+  .icon{width:38px;height:38px}
+  .hero{border-radius:23px}
+  .ringwrap{width:min(248px,72vw)}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat{min-height:104px;padding:14px}
+  .stat b{font-size:1.4rem}
+  .stat span{font-size:.66rem}
+  .today-plan>h2{margin-top:22px}
+  #list{padding:7px;border-radius:20px}
+  li{padding:11px 12px}
+}
+@media(max-width:380px){.stats{grid-template-columns:1fr}.top .r #clock{display:none}}
+
+/* Final responsive overrides; these supersede the earlier design breakpoints. */
+main > .top{grid-column:1/-1}
+main > .dashboard-set-controls,main > .banner,main > #importStatus,main > .set-comparison{grid-column:1/-1}
+main > .dashboard-focus,main > .today-plan{min-width:0}
+.dashboard-focus .hero{margin-top:20px}
+.hero{min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+.hero > .now,.hero > .sub,.hero > .det,.hero > .next,.hero > .badge{max-width:100%; overflow-wrap:anywhere}
+.ring-pair{width:min(100%,430px)}
+.ringwrap{width:min(290px,100%)}
+.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stat{min-width:0}
+.stat b,.notetxt{overflow-wrap:anywhere}
+.today-plan{padding-top:0}
+.today-plan>h2{margin-top:20px}
+#list{width:100%; min-width:0}
+li{min-width:0}
+li .nm,li .dt{overflow-wrap:anywhere}
+li .t{flex:0 0 auto; text-align:right; font-variant-numeric:tabular-nums}
+.dashboard-set-controls label{min-width:0; flex-wrap:wrap}
+.dashboard-set-controls select{max-width:100%}
+dialog{overscroll-behavior:contain; scrollbar-gutter:stable}
+.dhead{gap:12px}
+.dhead h2{min-width:0}
+.stabs{justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin}
+.stab{flex:0 0 auto; padding-inline:14px}
+button,select,input{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+button:not(:disabled):hover{transform:translateY(-1px)}
+button:not(:disabled):active{transform:translateY(0) scale(.98)}
+li.cur{animation:currentPeriodIn .32s cubic-bezier(.2,.8,.2,1) both}
+@keyframes currentPeriodIn{from{opacity:.76;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){
+  main{display:flex;flex-direction:column;gap:0;grid-template-columns:minmax(0,1fr)}
+  main > .top,main > .dashboard-set-controls,main > .banner,main > #importStatus,
+  main > .dashboard-focus,main > .today-plan,main > .set-comparison{grid-column:auto}
+  main > .dashboard-focus,main > .today-plan{width:100%; max-width:720px; justify-self:center}
+  .dashboard-focus .hero{margin-top:18px}
+  .today-plan>h2{margin-top:24px}
+  .hero{padding:24px}
+}
+@media(max-width:560px){
+  main{width:100%;max-width:100%}
+  .top{gap:8px}
+  .top .r{gap:6px}
+  .top .r #clock{display:block; max-width:100%; white-space:nowrap}
+  .hero{padding:20px 14px 22px}
+  .ringwrap{width:min(250px,78vw)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .stat{padding:13px 12px;min-height:98px}
+  .stat span{letter-spacing:.035em}
+  .dashboard-set-controls{align-items:stretch}
+  .dashboard-set-controls label{flex:1 1 100%;justify-content:space-between}
+  .dashboard-set-controls select{flex:1 1 50%;min-width:0}
+  dialog{width:calc(100% - 12px);max-height:calc(100dvh - 16px);margin:8px auto;border-radius:20px}
+  .dhead{padding:12px 14px}
+  .dbody{padding:4px 14px 18px}
+  .stabs{top:58px;gap:6px}
+  .stab{padding:8px 12px}
+}
+@media(max-width:360px){
+  body{padding-inline:10px}
+  .top .r #clock{font-size:.68rem}
+  .top .r{gap:4px}
+  .icon{width:34px;height:36px}
+  .stats{grid-template-columns:1fr}
+  .ring-panel-head select{max-width:100%}
+}
+/* Live-state labels, list animation, and feedback form. */
+.now::before{content:"SCHOOL DAY"}
+#hero[data-mode="before"] .now::before{content:"BEFORE SCHOOL"}
+#hero[data-mode="class"] .now::before{content:"IN CLASS"}
+#hero[data-mode="passing"] .now::before{content:"PASSING PERIOD"}
+#hero[data-mode="out"] .now::before{content:"SCHOOL DAY COMPLETE"}
+#hero[data-mode="off"] .now::before{content:"DAY OFF"}
+.now::before{border-color:color-mix(in srgb,var(--accent) 28%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--card));color:var(--accent)}
+li.cur{box-shadow:inset 4px 0 0 var(--bar),0 8px 20px -14px color-mix(in srgb,var(--hi) 85%,transparent)}
+li:not(.cur):not(.schedule-heading){animation:periodIn .24s ease both}
+@keyframes periodIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.feedback-trigger{min-height:38px;padding:7px 12px;border-radius:12px;background:color-mix(in srgb,var(--bar) 7%,var(--card));border:1px solid var(--line);color:var(--ink);font-size:.88rem}
+.feedback-trigger:hover{background:color-mix(in srgb,var(--hi) 18%,var(--card));border-color:color-mix(in srgb,var(--bar) 24%,var(--line))}
+#feedbackDlg{width:min(500px,calc(100% - 20px))}
+#feedbackDlg .dhead{align-items:center}
+#feedbackDlg .dhead h2{font-size:1.4rem;letter-spacing:-.04em}
+.feedback-kicker{margin:0 0 2px;color:var(--accent);font-size:.65rem;font-weight:850;letter-spacing:.14em}
+#feedbackDlg .hint{margin:12px 0 16px}
+#feedbackForm .field{margin:14px 0}
+#feedbackForm .label{display:block;margin:0 0 6px}
+#feedbackForm select,#feedbackForm input,#feedbackForm textarea{width:100%;background:var(--bg)}
+#feedbackForm textarea{display:block;min-height:132px;padding:12px;border:1px solid var(--line);border-radius:var(--rm);color:var(--ink);font:inherit;line-height:1.5;resize:vertical}
+#feedbackForm textarea::placeholder,#feedbackForm input::placeholder{color:var(--muted);opacity:.8}
+.feedback-count{display:block;margin-top:4px;color:var(--muted);font-size:.75rem;text-align:right;font-variant-numeric:tabular-nums}
+.feedback-name{margin:12px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.feedback-name summary{cursor:pointer;color:var(--ink);font-weight:700}
+.feedback-name .field{margin-bottom:0!important}
+.feedback-privacy{margin:12px 0;color:var(--muted);font-size:.8rem}
+.feedback-status{min-height:1.25em;margin:8px 0;color:var(--accent);font-size:.88rem;font-weight:700}
+.feedback-status[data-error="true"]{color:var(--danger)}
+.feedback-trap{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#feedbackForm .btns{margin-top:14px}
+#sendFeedback{width:100%;min-height:48px}
+.hero[data-intro-done="true"]{animation:none}
+.hero.flash[data-intro-done="true"]{animation:flash 1.2s ease-out 2}

@@ -20,6 +20,7 @@
 <!-- The dashboard has a deliberate reading order: date, live countdown,
      at-a-glance totals, then the detailed list of today's periods. -->
 <main id="main">
+  <!-- Page header: date, clock, feedback, settings, and keyboard help. -->
   <div class="top">
     <div class="l">
       <span class="daterow"><span id="date"></span><span class="dnum" id="dnum"></span></span>
@@ -27,6 +28,7 @@
     </div>
     <span class="r">
       <span id="clock"></span>
+      <button class="feedback-trigger" id="openFeedback" type="button">Feedback</button>
       <button class="icon" id="gear" type="button" aria-label="Open settings">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
       </button>
@@ -34,11 +36,13 @@
     </span>
   </div>
 
+  <!-- Optional schedule-group switching and comparison controls. -->
   <div class="dashboard-set-controls" id="dashboardGroupControls" hidden>
     <label>Show week <select id="activeSetSelect" aria-label="Choose a schedule group to show"></select></label>
     <label>Compare with <select id="compareSetSelect" aria-label="Choose another group to compare"></select></label>
   </div>
 
+  <!-- Import notices appear only when a shared schedule link is present. -->
   <div class="card banner" id="banner" hidden>
     <p id="bannerTxt"></p>
     <div class="btns">
@@ -48,10 +52,11 @@
   </div>
   <div class="card banner import-status" id="importStatus" role="status" hidden></div>
 
+  <!-- Live dashboard: current period, progress rings, totals, and note. -->
   <div class="dashboard-focus">
   <section class="card hero" id="hero">
     <div class="confetti" id="confetti" aria-hidden="true"></div>
-    <div class="now" id="now">Loading…</div>
+    <div class="now" id="now" role="status" aria-live="polite" aria-atomic="true">Loading…</div>
     <div class="ring-pair" id="ringPair">
       <section class="ring-panel" aria-label="Schedule progress">
         <div class="ring-panel-head">
@@ -59,7 +64,7 @@
           <select id="activeRingSchedule" aria-label="Choose a schedule for the ring"></select>
         </div>
         <div class="ringwrap" id="singleRingWrap">
-          <svg viewBox="0 0 200 200" aria-hidden="true">
+          <svg id="ringProgress" viewBox="0 0 200 200" role="progressbar" aria-label="Current class progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <circle class="trk" cx="100" cy="100" r="88"/>
             <circle class="prog" id="ring" cx="100" cy="100" r="88" transform="rotate(-90 100 100)" stroke-dasharray="552.92" stroke-dashoffset="552.92"/>
           </svg>
@@ -75,8 +80,8 @@
           <strong id="compareRingLabel">Compared group</strong>
           <select id="compareRingSchedule" aria-label="Choose a schedule to compare"></select>
         </div>
-        <div class="ringwrap">
-          <svg viewBox="0 0 200 200" aria-hidden="true">
+        <div class="ringwrap" id="compareRingWrap">
+          <svg id="compareRingProgress" viewBox="0 0 200 200" role="progressbar" aria-label="Compared class progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <circle class="trk" cx="100" cy="100" r="88"/>
             <circle class="prog compare-progress" id="compareRing" cx="100" cy="100" r="88" transform="rotate(-90 100 100)" stroke-dasharray="552.92" stroke-dashoffset="552.92"/>
           </svg>
@@ -102,11 +107,13 @@
   </div>
   </div>
 
+  <!-- Detailed periods for today's assigned schedule or schedules. -->
   <section class="today-plan" aria-labelledby="scheduleTitle">
   <h2 id="scheduleTitle" tabindex="-1">Today’s schedule</h2>
   <ol class="card" id="list" aria-labelledby="scheduleTitle"></ol>
   </section>
 
+  <!-- Optional side-by-side comparison of two schedule groups. -->
   <section class="set-comparison" id="comparison" aria-label="Weekly schedule comparison" hidden>
     <h2 id="comparisonTitle">Compare schedules</h2>
     <p class="hint comparison-hint" id="comparisonHint">Choose a day to see both groups’ schedules.</p>
@@ -268,6 +275,37 @@
   </div>
 </dialog>
 
+<!-- Short feedback form; its Apps Script endpoint is configured separately. -->
+<dialog id="feedbackDlg" aria-labelledby="feedbackTitle">
+  <div class="dhead">
+    <div><p class="feedback-kicker">HELP MAKE THIS BETTER</p><h2 id="feedbackTitle">Send feedback</h2></div>
+    <button class="alt" id="feedbackClose" type="button">Close</button>
+  </div>
+  <div class="dbody">
+    <p class="hint">Share a bug, an idea, or anything that would make your school day easier.</p>
+    <form id="feedbackForm">
+      <label class="field"><span class="label">What kind of feedback?</span>
+        <select id="feedbackType" required>
+          <option value="Idea">Idea</option><option value="Bug">Bug</option><option value="Other">Other</option>
+        </select>
+      </label>
+      <label class="field"><span class="label">Your feedback</span>
+        <textarea id="feedbackMessage" maxlength="1200" rows="5" required placeholder="What happened, or what would you like to see?"></textarea>
+        <span class="feedback-count" id="feedbackCount">0 / 1200</span>
+      </label>
+      <details class="feedback-name">
+        <summary>Add my name (optional)</summary>
+        <label class="field"><span class="label">Name</span><input type="text" id="feedbackName" maxlength="60" autocomplete="name" placeholder="Your name"></label>
+      </details>
+      <label class="feedback-trap" aria-hidden="true">Leave this field empty<input type="text" id="feedbackWebsite" tabindex="-1" autocomplete="off"></label>
+      <p class="feedback-privacy">Your name is optional. Leave it blank if you prefer not to include it. Please don&rsquo;t include sensitive information.</p>
+      <p class="feedback-status" id="feedbackStatus" role="status" aria-live="polite"></p>
+      <div class="btns"><button id="sendFeedback" type="submit">Send feedback</button></div>
+    </form>
+  </div>
+</dialog>
+
+<!-- Keyboard shortcut help. -->
 <dialog id="keysDlg" aria-labelledby="keysTitle">
   <div class="dhead"><h2 id="keysTitle">Quick keyboard controls</h2><button class="alt" id="keysClose" type="button">Done</button></div>
   <div class="dbody shortcut-list">
@@ -289,6 +327,8 @@
   </div>
 </dialog>
 
+<!-- Config must execute before app.js so feedback handlers see its endpoint. -->
+<script src="feedback-config.js" defer></script>
 <script src="app.js" defer></script>
 
 </body>

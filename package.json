@@ -1,0 +1,7 @@
+{
+  "name": "school-schedule",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}

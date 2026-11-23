@@ -84,6 +84,8 @@ main ol{animation-delay:.22s}
 
 /* Header, import notices, and live dashboard. */
 .top{display:flex; justify-content:space-between; align-items:center; gap:12px}
+.top-start{display:flex; align-items:center; gap:10px; min-width:0}
+.top-start .daterow{min-width:0}
 .top .l{display:flex; flex-direction:column; gap:6px; align-items:flex-start; min-width:0}
 .top .r{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; font-weight:600}
 #date{font-weight:700}
@@ -110,6 +112,8 @@ main ol{animation-delay:.22s}
 .banner{margin-top:16px; padding:14px 16px}
 .banner[hidden]{display:none}
 .banner p{margin:0 0 10px; font-weight:600}
+.save-status{margin:10px 0 0;padding:9px 12px;border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line));border-radius:var(--rs);background:color-mix(in srgb,var(--warn) 9%,var(--card));color:var(--ink);font-size:.84rem;font-weight:650}
+.save-status[hidden]{display:none}
 
 .hero{margin-top:18px; padding:22px 16px 20px; text-align:center; position:relative; overflow:hidden; isolation:isolate; transition:border-color .4s}
 .hero::before{
@@ -121,7 +125,7 @@ main ol{animation-delay:.22s}
 .confetti span{position:absolute; top:-16px; width:8px; height:14px; border-radius:2px; animation:fall 3s ease-in both}
 .now{font-size:clamp(1.4rem,5.5vw,1.9rem); font-weight:800; letter-spacing:-.01em}
 .ring-pair{display:grid; grid-template-columns:minmax(0,1fr); gap:12px; width:min(720px,100%); margin:12px auto 4px; transition:grid-template-columns .32s ease,gap .32s ease}
-.ring-panel{min-width:0; padding:10px; border:1px solid transparent; border-radius:var(--rm); background:transparent; transition:background .25s ease,border-color .25s ease,box-shadow .25s ease; animation:panelIn .28s ease both}
+.ring-panel{min-width:0; padding:10px; border:1px solid transparent; border-radius:var(--rm); background:transparent; transition:background .25s ease,border-color .25s ease,box-shadow .25s ease; animation:ringPanelIn .28s ease both}
 .ring-panel-head{display:grid; gap:4px; justify-items:center; min-height:38px; margin:0 0 4px; color:var(--muted); font-size:.82rem}
 .ring-panel-head strong{color:var(--ink); font-size:.9rem}
 .ring-panel-head select{width:min(100%,250px); min-height:36px; padding:5px 28px 5px 10px; font-size:.82rem; text-align:center}
@@ -134,7 +138,7 @@ main ol{animation-delay:.22s}
 .ring-pair.is-comparing .count{font-size:clamp(1.1rem,5vw,2.7rem)}
 .ring-pair.is-comparing .unit{font-size:clamp(.65rem,1.8vw,.88rem)}
 .ring-pair.is-comparing .pct{font-size:clamp(.68rem,1.8vw,.9rem)}
-@keyframes panelIn{from{opacity:.35; transform:translateY(5px)}to{opacity:1; transform:translateY(0)}}
+@keyframes ringPanelIn{from{opacity:.35; transform:translateY(5px)}to{opacity:1; transform:translateY(0)}}
 .hero.compare-mode > .now,.hero.compare-mode > .sub,.hero.compare-mode > .det,.hero.compare-mode > .next,.hero.compare-mode > .badge{display:none}
 main[data-comparing="true"] .stats,main[data-comparing="true"] .today-plan{display:none}
 main[data-comparing="true"] .dashboard-focus .hero{padding:12px 16px 14px; margin-top:12px}
@@ -199,6 +203,7 @@ main[data-comparing="true"] .ring-pair.is-comparing .ringwrap{width:min(220px,10
 .stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 0}
 :root[data-note="off"] .stats{grid-template-columns:1fr}
 :root[data-note="off"] #noteCard{display:none}
+.stats.single-stat{grid-template-columns:minmax(0,1fr)}
 :root[data-pct="off"] .pct{display:none}
 :root[data-numdate="off"] .dnum{display:none}
 .stat{padding:16px 16px 14px}
@@ -449,6 +454,9 @@ button.danger{background:var(--danger); border-color:var(--danger); color:var(--
 .week-day[data-today="true"]{border-color:var(--bar); box-shadow:inset 0 0 0 1px var(--bar)}
 .week-day[data-empty="true"] span{font-style:italic}
 .backup{margin-top:22px; padding-top:14px; border-top:1px solid var(--line)}
+.rotation-settings .hint{margin:8px 0}
+.rotation-settings #rotationControls{display:grid;gap:8px}
+.rotation-settings #rotationControls[hidden]{display:none}
 .backup .label{margin-top:0}
 .shortcut-list kbd{display:inline-block; min-width:32px; margin-right:8px; padding:3px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); text-align:center; font:600 .9rem ui-monospace,monospace}
 /* Shared selectable-pill style for schedule tabs and day chips */
@@ -477,9 +485,9 @@ input[type=color]{width:44px; height:34px; padding:0; border:1px solid var(--lin
 .opt{display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); min-height:42px}
 .opt select,.opt .select-control,.opt input:not([type=checkbox]){width:min(240px,48%); flex:none}
 input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi); cursor:pointer}
-.today{margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
-.today summary,.period-details summary,.advanced-actions summary,.advanced-options summary,.week-preview summary{cursor:pointer; color:var(--ink); font-weight:700; padding:4px 0}
-.today[open] summary,.period-details[open] summary,.advanced-actions[open] summary,.advanced-options[open] summary,.week-preview[open] summary{margin-bottom:8px}
+.today,.rotation-settings{margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
+.today summary,.rotation-settings summary,.period-details summary,.advanced-actions summary,.advanced-options summary,.week-preview summary{cursor:pointer; color:var(--ink); font-weight:700; padding:4px 0}
+.today[open] summary,.rotation-settings[open] summary,.period-details[open] summary,.advanced-actions[open] summary,.advanced-options[open] summary,.week-preview[open] summary{margin-bottom:8px}
 .period-details{grid-area:m; min-width:0}
 .period-details[open]{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .period-details summary{grid-column:1/-1}
@@ -491,7 +499,7 @@ input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi);
 .foot{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:26px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid color-mix(in srgb,var(--bar) 50%,transparent); outline-offset:2px}
 button:not(:disabled){transition:transform .12s ease, background .2s, color .2s, border-color .2s, box-shadow .2s}
-button:not(:disabled):not(.alt):not(.x):not(.icon):not(.stab):not(.tab):not(.theme-card):not(.danger):not([data-mode]):hover{
+button:not(:disabled):not(.alt):not(.x):not(.icon):not(.header-control):not(.stab):not(.tab):not(.theme-card):not(.sidebar-link):not(.sidebar-close):not(.menu-btn):not(.danger):not([data-mode]):hover{
   background:color-mix(in srgb,var(--ink) 92%,var(--hi)); border-color:color-mix(in srgb,var(--ink) 92%,var(--hi));
 }
 button.alt:not(:disabled):hover,button.x:not(:disabled):hover{background:color-mix(in srgb,var(--ink) 7%,var(--card))}
@@ -503,10 +511,10 @@ button{user-select:none; -webkit-tap-highlight-color:transparent}
   main{width:calc(100vw - 36px); max-width:calc(100vw - 36px); min-width:0}
   .dashboard-focus,.today-plan,.hero,.stats,#list{width:100%; min-width:0}
   .stats{grid-template-columns:1fr}
-  .top{display:grid; grid-template-columns:minmax(0,1fr) 90px; gap:8px; align-items:start; min-height:0; padding-right:0}
-  .top .l{max-width:100%; min-width:0}
-  .top .r{position:static; display:grid; width:90px; min-width:90px; grid-template-columns:repeat(2,42px); justify-content:end; justify-items:center; gap:6px; font-size:.82rem}
-  .top .r #clock{grid-column:1/-1; white-space:nowrap; font-size:.72rem; letter-spacing:-.02em}
+  .top{display:flex; flex-wrap:nowrap; align-items:flex-start; gap:10px; min-height:0; padding-right:0}
+  .top-start{flex:1 1 auto; align-items:flex-start}
+  .top-start .daterow{flex:1 1 auto; min-width:0}
+  .top #clock{flex:0 0 68px; max-width:68px; white-space:nowrap; text-align:right; font-size:.76rem}
 }
 @media (max-width:480px){
   .opt select,.opt .select-control,.opt input:not([type=checkbox]){width:46%}
@@ -587,8 +595,8 @@ li{transition:background-color .2s ease,color .2s ease,opacity .2s ease,box-shad
 .ring-panel-head select,.ring-panel-head .select-control{width:min(100%,250px)}
 .ring-panel-head .select-trigger{min-height:36px;padding:5px 36px 5px 10px;border-radius:11px;background-color:color-mix(in srgb,var(--ink) 3%,var(--card));font-size:.82rem;text-align:center}
 .ringwrap{width:min(300px,72vw)}
-.trk{stroke:color-mix(in srgb,var(--bar) 10%,var(--bg));stroke-width:10}
-.prog{stroke-width:11;filter:drop-shadow(0 5px 9px color-mix(in srgb,var(--glow-now) 32%,transparent))}
+.trk{stroke:color-mix(in srgb,var(--bar) 10%,var(--bg));stroke-width:var(--ringw)}
+.prog{stroke-width:var(--ringw);filter:drop-shadow(0 5px 9px color-mix(in srgb,var(--glow-now) 32%,transparent))}
 .count{font-size:clamp(3.2rem,7vw,4.6rem);font-weight:780;letter-spacing:-.075em}
 .unit{margin-top:9px;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}
 .pct{font-size:.82rem;color:var(--muted)}
@@ -631,9 +639,9 @@ input,select{border-radius:12px}
 @media(max-width:560px){
   body{padding-inline:14px}
   main{width:100%;max-width:680px}
-  .top{display:flex;align-items:center;padding-bottom:14px}
+  .top{display:flex;align-items:flex-start;padding-bottom:14px}
   .top .r{display:flex;width:auto;min-width:0;gap:7px}
-  .top .r #clock{font-size:.76rem}
+  .top #clock{font-size:.76rem}
   .icon{width:38px;height:38px}
   .hero{border-radius:23px}
   .ringwrap{width:min(248px,72vw)}
@@ -645,7 +653,7 @@ input,select{border-radius:12px}
   #list{padding:7px;border-radius:20px}
   li{padding:11px 12px}
 }
-@media(max-width:380px){.stats{grid-template-columns:1fr}.top .r #clock{display:none}}
+@media(max-width:380px){.stats{grid-template-columns:1fr}.top #clock{display:none}}
 
 /* Final responsive overrides; these supersede the earlier design breakpoints. */
 main > .top{grid-column:1/-1}
@@ -690,7 +698,7 @@ li.cur{animation:currentPeriodIn .32s cubic-bezier(.2,.8,.2,1) both}
   main{width:100%;max-width:100%}
   .top{gap:8px}
   .top .r{gap:6px}
-  .top .r #clock{display:block; max-width:100%; white-space:nowrap}
+  .top #clock{display:block; max-width:68px; white-space:nowrap; flex:0 0 68px}
   .hero{padding:20px 14px 22px}
   .ringwrap{width:min(250px,78vw)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
@@ -707,7 +715,7 @@ li.cur{animation:currentPeriodIn .32s cubic-bezier(.2,.8,.2,1) both}
 }
 @media(max-width:360px){
   body{padding-inline:10px}
-  .top .r #clock{font-size:.68rem}
+  .top #clock{font-size:.68rem}
   .top .r{gap:4px}
   .icon{width:34px;height:36px}
   .stats{grid-template-columns:1fr}
@@ -727,17 +735,17 @@ li:not(.cur):not(.schedule-heading){animation:periodIn .24s ease both}
 @keyframes periodIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .feedback-trigger{min-height:38px;padding:7px 12px;border-radius:12px;background:color-mix(in srgb,var(--bar) 7%,var(--card));border:1px solid var(--line);color:var(--ink);font-size:.88rem}
 .feedback-trigger:hover{background:color-mix(in srgb,var(--hi) 18%,var(--card));border-color:color-mix(in srgb,var(--bar) 24%,var(--line))}
-#openFeedback:not(:disabled):hover{background:color-mix(in srgb,var(--hi) 18%,var(--card));border-color:color-mix(in srgb,var(--bar) 24%,var(--line));color:var(--ink)}
-#feedbackDlg{width:min(500px,calc(100% - 20px))}
-#feedbackDlg .dhead{align-items:center}
-#feedbackDlg .dhead h2{font-size:1.4rem;letter-spacing:-.04em}
 .feedback-kicker{margin:0 0 2px;color:var(--accent);font-size:.65rem;font-weight:850;letter-spacing:.14em}
-#feedbackDlg .hint{margin:12px 0 16px}
+.feedback-panel>.hint{margin:12px 0 16px}
 #feedbackForm .field{margin:14px 0}
 #feedbackForm .label{display:block;margin:0 0 6px}
 #feedbackForm select,#feedbackForm input,#feedbackForm textarea{width:100%;background:var(--bg)}
 #feedbackForm textarea{display:block;min-height:132px;padding:12px;border:1px solid var(--line);border-radius:var(--rm);color:var(--ink);font:inherit;line-height:1.5;resize:vertical}
 #feedbackForm textarea::placeholder,#feedbackForm input::placeholder{color:var(--muted);opacity:.8}
+
+/* Ring thickness is controlled by the --ringw CSS variable (set by applyLook
+   in app.js and the first-paint script in index.html). */
+
 .feedback-count{display:block;margin-top:4px;color:var(--muted);font-size:.75rem;text-align:right;font-variant-numeric:tabular-nums}
 .feedback-name{margin:12px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .feedback-name summary{cursor:pointer;color:var(--ink);font-weight:700}
@@ -750,3 +758,168 @@ li:not(.cur):not(.schedule-heading){animation:periodIn .24s ease both}
 #sendFeedback{width:100%;min-height:48px}
 .hero[data-intro-done="true"]{animation:none}
 .hero.flash[data-intro-done="true"]{animation:flash 1.2s ease-out 2}
+
+/* ---- UI polish: progress bar, live pulse, hover states, and depth ---- */
+li.cur{position:relative;overflow:hidden}
+li.cur::after{
+  content:""; position:absolute; bottom:0; left:0; height:3px;
+  width:var(--progress,0%); border-radius:0 3px 3px 0;
+  background:linear-gradient(90deg,var(--accent),var(--hi));
+  transition:width .5s linear;
+}
+#hero[data-mode="class"] .now::before,
+#hero[data-mode="passing"] .now::before{
+  animation:liveBadgePulse 2s ease-in-out infinite;
+}
+@keyframes liveBadgePulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 30%,transparent)}
+  50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 8%,transparent)}
+}
+li:not(.cur):not(.done):not(.schedule-heading):not(.empty):hover{
+  background:color-mix(in srgb,var(--ink) 4%,var(--card));
+}
+li:not(.cur):not(.done):not(.schedule-heading):not(.empty):hover .nm{
+  letter-spacing:0;
+}
+#list li:not(.cur):not(.schedule-heading):not(.empty){animation:periodIn .28s cubic-bezier(.2,.8,.2,1) both}
+#list li:nth-child(2):not(.cur){animation-delay:30ms}
+#list li:nth-child(3):not(.cur){animation-delay:60ms}
+#list li:nth-child(4):not(.cur){animation-delay:90ms}
+#list li:nth-child(5):not(.cur){animation-delay:120ms}
+#list li:nth-child(6):not(.cur){animation-delay:150ms}
+#list li:nth-child(7):not(.cur){animation-delay:180ms}
+#list li:nth-child(8):not(.cur){animation-delay:210ms}
+#list li:nth-child(9):not(.cur){animation-delay:240ms}
+#list li:nth-child(10):not(.cur){animation-delay:270ms}
+#list li:nth-child(11):not(.cur){animation-delay:300ms}
+#list li:nth-child(12):not(.cur){animation-delay:330ms}
+.stat{position:relative;overflow:hidden}
+.stat::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--bar),var(--hi)); opacity:.5;
+}
+.stat[data-final="1"]::before{background:linear-gradient(90deg,var(--hi),var(--gold)); opacity:.8}
+.stat[data-final="2"]::before{background:linear-gradient(90deg,var(--warn),var(--danger)); opacity:.8}
+.hero{
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 0%,color-mix(in srgb,var(--hi) 18%,transparent),transparent 60%),
+    linear-gradient(160deg,color-mix(in srgb,var(--bar) 4%,var(--card)),var(--card) 55%);
+}
+.hero::after{
+  content:""; position:absolute; bottom:0; left:15%; right:15%; height:1px;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bar) 22%,transparent),transparent);
+}
+@media(prefers-reduced-motion:reduce){
+  li.cur::after{transition:none}
+  #hero[data-mode="class"] .now::before,
+  #hero[data-mode="passing"] .now::before{animation:none}
+  #list li{animation:none}
+}
+
+/* ---- Header controls, fullscreen, compact layout, no-detail ---- */
+
+/* Compact top bar with settings and fullscreen controls. */
+.top{padding:0 0 12px; border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.top-clock{font-variant-numeric:tabular-nums; font-weight:700; font-size:.88rem; color:var(--muted)}
+main > .top{margin-bottom:14px}
+@media(min-width:901px){.dashboard-focus .hero{margin-top:0}}
+.header-control{
+  display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; min-height:42px; padding:0;
+  border:1px solid var(--line); border-radius:var(--rs); background:var(--card); color:var(--ink);
+  box-shadow:var(--shadow); cursor:pointer; transition:transform .12s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.header-control:hover{background:color-mix(in srgb,var(--hi) 14%,var(--card)); border-color:var(--hi); color:var(--ink); box-shadow:0 8px 22px -10px color-mix(in srgb,var(--hi) 55%,transparent)}
+.header-control:active{transform:scale(.96)}
+.header-control svg{display:block}
+#fsBtn .fullscreen-exit-icon{display:none}
+body.fs-mode #fsBtn .fullscreen-enter-icon{display:none}
+body.fs-mode #fsBtn .fullscreen-exit-icon{display:block}
+
+/* Fullscreen mode */
+body.fs-mode{overflow:hidden}
+body.fs-mode .dashboard-set-controls,
+body.fs-mode .banner,
+body.fs-mode #importStatus,
+body.fs-mode .stats,
+body.fs-mode .today-plan,
+body.fs-mode .set-comparison{display:none !important}
+body.fs-mode .top .daterow,
+body.fs-mode .top-clock{display:none !important}
+body.fs-mode .top{
+  position:fixed; inset:14px auto auto 14px; z-index:210; display:flex; width:auto;
+  margin:0; padding:0; border:0;
+}
+body.fs-mode .top-start{gap:8px}
+body.fs-mode .hero{
+  position:fixed; inset:0; z-index:100; margin:0; border-radius:0; border:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; padding:72px 24px 24px;
+  background:
+    radial-gradient(ellipse 66% 64% at 50% 42%,color-mix(in srgb,var(--glow-now) 20%,transparent),transparent 72%),
+    radial-gradient(ellipse 68% 82% at 0% 100%,color-mix(in srgb,var(--bar) 16%,transparent),transparent 72%),
+    radial-gradient(ellipse 60% 70% at 100% 0%,color-mix(in srgb,var(--hi) 12%,transparent),transparent 72%),
+    linear-gradient(145deg,var(--bg),var(--card) 70%);
+}
+body.fs-mode main[data-comparing="true"] .hero{
+  background:
+    radial-gradient(ellipse 34% 72% at 24% 50%,color-mix(in srgb,var(--hi) 25%,transparent),transparent 76%),
+    radial-gradient(ellipse 34% 72% at 76% 50%,color-mix(in srgb,var(--go) 23%,transparent),transparent 76%),
+    radial-gradient(ellipse 66% 64% at 50% 42%,color-mix(in srgb,var(--glow-now) 18%,transparent),transparent 72%),
+    linear-gradient(145deg,var(--bg),var(--card) 70%);
+}
+body.fs-mode main[data-comparing="true"] .dashboard-focus .hero{margin:0;padding:72px 24px 24px}
+body.fs-mode .hero .ringwrap{width:min(520px,58vh,80vw); height:auto}
+body.fs-mode .hero .count{font-size:clamp(2.8rem,10vw,4.5rem)}
+body.fs-mode .hero .unit{font-size:1.1rem}
+body.fs-mode .hero .now{font-size:1.1rem}
+body.fs-mode .hero .sub,
+body.fs-mode .hero .det,
+body.fs-mode .hero .next,
+body.fs-mode .hero .badge{font-size:.95rem}
+#scheduleTitle.sr-only,.today-plan>h2.sr-only{
+  position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+  overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+.today-plan>h2.sr-only::before{content:none}
+#gear>svg:not(.gear-icon){display:none}
+.header-control#gear .gear-icon{width:26px;height:26px;stroke-width:1.55}
+body.fs-mode .ring-pair{width:auto; max-width:100%}
+body.fs-mode .ring-pair .ring-panel{flex:none}
+body.fs-mode main[data-comparing="true"] .ring-pair{
+  width:min(1040px,100%); gap:clamp(12px,3vw,40px);
+}
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .ring-panel{
+  padding:clamp(8px,1.8vw,22px); border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);
+  border-radius:24px; background:color-mix(in srgb,var(--card) 82%,transparent);
+  box-shadow:0 22px 60px -34px color-mix(in srgb,var(--ink) 65%,transparent);
+}
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .ringwrap{width:min(420px,46vh,38vw)}
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .count{font-size:clamp(1.5rem,5vw,3.8rem)}
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .unit,
+body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .pct{font-size:clamp(.65rem,1.3vw,.9rem)}
+body.fs-mode .confetti{display:none}
+@media(max-width:600px){
+  body.fs-mode .hero{padding:70px 10px 16px}
+  body.fs-mode main[data-comparing="true"] .dashboard-focus .hero{padding:70px 10px 16px}
+  body.fs-mode main[data-comparing="true"] .ring-pair{width:100%; gap:8px}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing{grid-template-columns:minmax(0,1fr)}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .ring-panel{padding:7px;border-radius:16px}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .ring-panel{width:min(100%,520px);justify-self:center}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .ringwrap{width:min(270px,72vw,32vh)}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .count{font-size:clamp(1.5rem,7vw,2.4rem)}
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .unit,
+  body.fs-mode main[data-comparing="true"] .ring-pair.is-comparing .pct{font-size:.65rem}
+}
+
+/* No-detail list items: name expands, row is slightly more compact */
+li.no-detail{padding-top:10px; padding-bottom:10px}
+li.no-detail .nm{font-size:1.04em; font-weight:600}
+
+/* Reduced scrolling: tighter spacing throughout */
+main{gap:0 clamp(14px,2.5vw,30px)}
+.dashboard-focus{gap:10px}
+.today-plan > h2{margin:14px 4px 8px}
+#list{gap:2px}
+li{padding:10px 14px}
+.stat{padding:12px 14px}

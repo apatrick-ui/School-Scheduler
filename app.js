@@ -28,14 +28,14 @@ const DEFAULTS = {
     ]
   }],
   editing: "s1", editingSetId: "set1", activeSetId: "set1", compareSetId: "",
-  override: null,   // { date, id }: use a different schedule for one day
-  adjust: null,     // { date, shift, endAt }: late start / early release for one day
+  rotation: { enabled: false, anchorMonday: "", setAId: "", setBId: "" },
+  exceptions: [],
   theme: { preset: "auto", autoLight: "paper", autoDark: "midnight",
            mode: "system",
            custom: { bg: "#eef1f4", card: "#ffffff", ink: "#14213d", hi: "#ffd23f", bar: "#14213d", warn: "#c2410c", go: "#0b8a74", gold: "#d99a00", danger: "#d62828", glow: "#ffd23f" } },
   use24: false, seconds: true, size: "normal", showPassing: true, effects: true,
-  font: "rounded", corners: "normal", ring: "normal", bgStyle: "glow", showNote: true, showPercent: true, showNumDate: true,
-  alert: { on: true, mins: 5, sound: false }
+  font: "rounded", corners: "normal", ring: "normal", bgStyle: "glow", showNote: true, showPercent: true, showNumDate: false, displayPrefsVersion: 2,
+  alert: { on: true, mins: 5, sound: false, notify: false }
 };
 // Complete palettes used by the theme cards. Semantic colors (warning, danger,
 // passing and completion) stay distinct from the user-selected accent.
@@ -83,7 +83,9 @@ const SIZES = { small: "14px", normal: "16px", large: "19px" };
 const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ALERT_MINS = [1, 2, 3, 5, 10];
 const KEY = "schoolSchedule.v3";
+const VERSION = "2.0.14";
 const RING = 552.92;
+const Core = window.SchoolScheduleCore;
 const FIRST_RUN = (() => {
   try { return !localStorage.getItem(KEY) && !localStorage.getItem("schoolSchedule.v2"); }
   catch (e) { return false; }
@@ -214,37 +216,19 @@ const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.
 // Times are stored as seconds since midnight while calculations run, then
 // formatted only at the UI boundary. Invalid user-entered times return null.
 const toSec = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 3600 + +m[2] * 60 : null; };
-const fromSec = s => pad(Math.floor(s / 3600) % 24) + ":" + pad(Math.floor(s % 3600 / 60));
+const fromSec = s => { s = Math.max(0, s % 86400); return pad(Math.floor(s / 3600) % 24) + ":" + pad(Math.floor(s % 3600 / 60)); };
 const roomTxt = r => /\d/.test(r) && /^\S{1,6}$/.test(r) ? "Room " + r : r;
 const detail = p => p ? [p.teacher, p.room ? roomTxt(p.room) : ""].filter(Boolean).join(", ") : "";
 const head = p => { const d = detail(p); return d ? "Head to " + d : ""; };
 
 function check(periods) {
-  // Normalize imported and edited entries to one internal shape before use.
-  // Reject overlaps here so every caller (editor, import, and runtime) agrees
-  // on which schedules are safe to display.
-  const list = [];
-  for (const p of periods) {
-    const kind = p.kind === "passing" ? "passing" : "class";
-    const a = toSec(p.start), b = toSec(p.end), name = (p.name || "").trim() || (kind === "passing" ? "Passing time" : "Untitled");
-    if (a == null || b == null) return { ok: false, msg: "Set a start and end time for every period." };
-    if (b <= a) return { ok: false, msg: name + ": the end time must be after the start time." };
-    list.push({ name, start: a, end: b, teacher: (p.teacher || "").trim(), room: (p.room || "").trim(), note: (p.note || "").trim(), kind });
-  }
-  if (!list.length) return { ok: false, msg: "Add at least one class." };
-  if (!list.some(p => p.kind !== "passing")) return { ok: false, msg: "Add at least one class, not just passing periods." };
-  list.sort((x, y) => x.start - y.start);
-  for (let i = 1; i < list.length; i++)
-    if (list[i].start < list[i - 1].end) return { ok: false, msg: list[i - 1].name + " and " + list[i].name + " overlap." };
-  return { ok: true, list };
+  return Core.checkPeriods(periods);
 }
 
-// Today-only changes: shift every period, and/or cut the day off at a set time
+// Date exceptions can change a day's schedule, cancel classes, or adjust times.
 function applyAdjust(list, d) {
-  // One-day overrides are kept separate from the saved weekly schedule.
-  // Shifting happens before an optional early-release cutoff is applied.
-  const a = settings.adjust;
-  if (!a || a.date !== dayKey(d)) return { list, adjusted: false };
+  const a = dateExceptionFor(d);
+  if (!a || a.noSchool) return { list, adjusted: false };
   let out = list.map(p => ({ ...p, start: p.start + a.shift * 60, end: p.end + a.shift * 60 }));
   const cut = toSec(a.endAt);
   if (cut != null) out = out.filter(p => p.start < cut).map(p => ({ ...p, end: Math.min(p.end, cut) }));
@@ -314,25 +298,61 @@ function sanitize(o) {
   if (CORNERS[o.corners]) s.corners = o.corners;
   if (RINGS[o.ring]) s.ring = o.ring;
   if (BGS.includes(o.bgStyle)) s.bgStyle = o.bgStyle;
-  for (const k of ["showNote", "showPercent", "showNumDate"]) if (typeof o[k] === "boolean") s[k] = o[k];
+  for (const k of ["showNote", "showPercent"]) if (typeof o[k] === "boolean") s[k] = o[k];
+  if (o.displayPrefsVersion === 1) s.showNumDate = false;
+  else if (o.displayPrefsVersion === 2 && typeof o.showNumDate === "boolean") s.showNumDate = o.showNumDate;
+  s.displayPrefsVersion = 2;
   if (SIZES[o.size]) s.size = o.size;
   if (o.alert && typeof o.alert === "object") {
     if (typeof o.alert.on === "boolean") s.alert.on = o.alert.on;
     if (ALERT_MINS.includes(o.alert.mins)) s.alert.mins = o.alert.mins;
     if (typeof o.alert.sound === "boolean") s.alert.sound = o.alert.sound;
+    if (typeof o.alert.notify === "boolean") s.alert.notify = o.alert.notify;
   }
   s.editingSetId = validSetIds.has(o.editingSetId) ? o.editingSetId : s.sets[0].id;
   s.activeSetId = validSetIds.has(o.activeSetId) ? o.activeSetId : s.sets[0].id;
   s.compareSetId = validSetIds.has(o.compareSetId) && o.compareSetId !== s.activeSetId ? o.compareSetId : "";
   const editSetSchedule = s.schedules.find(x => x.setId === s.editingSetId) || s.schedules[0];
   s.editing = s.schedules.some(x => x.id === o.editing && x.setId === s.editingSetId) ? o.editing : editSetSchedule.id;
-  if (o.override && typeof o.override.date === "string" && s.schedules.some(x => x.id === o.override.id)) s.override = { date: o.override.date, id: o.override.id };
-  if (o.adjust && typeof o.adjust.date === "string") {
-    let sh = Math.round(Number(o.adjust.shift)); if (!Number.isFinite(sh)) sh = 0;
-    sh = Math.max(-180, Math.min(300, sh));
-    const ea = toSec(o.adjust.endAt) != null ? o.adjust.endAt : "";
-    if (sh || ea) s.adjust = { date: o.adjust.date, shift: sh, endAt: ea };
+  const rotation = o.rotation && typeof o.rotation === "object" ? o.rotation : {};
+  s.rotation = {
+    enabled: rotation.enabled === true,
+    anchorMonday: Core.isMonday(rotation.anchorMonday) ? rotation.anchorMonday : "",
+    setAId: validSetIds.has(rotation.setAId) ? rotation.setAId : "",
+    setBId: validSetIds.has(rotation.setBId) ? rotation.setBId : ""
+  };
+  if (!s.rotation.anchorMonday || !s.rotation.setAId || !s.rotation.setBId || s.rotation.setAId === s.rotation.setBId) {
+    s.rotation.enabled = false;
   }
+  const byDate = new Map();
+  if (Array.isArray(o.exceptions)) o.exceptions.slice(-500).forEach(item => {
+    if (!item || !Core.isValidDateKey(item.date)) return;
+    const scheduleId = typeof item.scheduleId === "string" && s.schedules.some(schedule => schedule.id === item.scheduleId) ? item.scheduleId : "";
+    let shift = Math.round(Number(item.shift));
+    if (!Number.isFinite(shift)) shift = 0;
+    shift = Math.max(-180, Math.min(300, shift));
+    const endAt = toSec(item.endAt) != null ? item.endAt : "";
+    const exception = { date: item.date, noSchool: item.noSchool === true, scheduleId, shift, endAt };
+    if (exception.noSchool || scheduleId || shift || endAt) byDate.set(item.date, exception);
+  });
+  if (o.override && Core.isValidDateKey(o.override.date) && s.schedules.some(schedule => schedule.id === o.override.id)) {
+    const existing = byDate.get(o.override.date) || { date: o.override.date, noSchool: false, scheduleId: "", shift: 0, endAt: "" };
+    if (!existing.noSchool) existing.scheduleId = o.override.id;
+    byDate.set(o.override.date, existing);
+  }
+  if (o.adjust && Core.isValidDateKey(o.adjust.date)) {
+    let shift = Math.round(Number(o.adjust.shift));
+    if (!Number.isFinite(shift)) shift = 0;
+    shift = Math.max(-180, Math.min(300, shift));
+    const endAt = toSec(o.adjust.endAt) != null ? o.adjust.endAt : "";
+    if (shift || endAt) {
+      const existing = byDate.get(o.adjust.date) || { date: o.adjust.date, noSchool: false, scheduleId: "", shift: 0, endAt: "" };
+      existing.shift = shift;
+      existing.endAt = endAt;
+      byDate.set(o.adjust.date, existing);
+    }
+  }
+  s.exceptions = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   return s;
 }
 function load() {
@@ -351,6 +371,21 @@ function load() {
   return clone(DEFAULTS);
 }
 let settings = load();
+const dateExceptionFor = date => Core.findDateException(dayKey(date), settings.exceptions);
+const dateFromKey = key => {
+  if (!Core.isValidDateKey(key)) return null;
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+function activeSetForDay(date) {
+  const exception = dateExceptionFor(date);
+  const forced = exception && settings.schedules.find(schedule => schedule.id === exception.scheduleId);
+  return forced ? forced.setId : Core.rotatingSetId(dayKey(date), settings.rotation, settings.activeSetId);
+}
+function removeExceptionsForMissingSchedules() {
+  const scheduleIds = new Set(settings.schedules.map(schedule => schedule.id));
+  settings.exceptions = settings.exceptions.filter(exception => !exception.scheduleId || scheduleIds.has(exception.scheduleId));
+}
 // Dashboard selection is session-only: all schedules remain saved, while the
 // student chooses which one to inspect in the main countdown.
 let viewScheduleId = null;
@@ -358,7 +393,20 @@ let compareViewScheduleId = null;
 let lastKey = "", lastListKey = "";
 // Persistence is best-effort: private browsing or quota restrictions must not
 // make normal in-memory editing fail.
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) {} };
+const save = () => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(settings));
+    $("saveStatus").hidden = true;
+    $("saveStatus").textContent = "";
+    return true;
+  } catch (error) {
+    const status = $("saveStatus");
+    status.textContent = "Changes couldn’t be saved in this browser. Download a backup in Settings → Data before closing.";
+    status.hidden = false;
+    console.error("Could not save schedule settings.", error);
+    return false;
+  }
+};
 const editingSet = () => settings.sets.find(set => set.id === settings.editingSetId) || settings.sets[0];
 const setLabel = set => {
   const name = set.name || "Schedule group";
@@ -374,59 +422,81 @@ const label = s => {
 };
 
 function activeSchedule(d) {
-  // A one-day override is an explicit choice for today, so it takes priority
-  // over the optional ring preview. The preview is used on ordinary days.
-  const o = settings.override;
-  const override = o && o.date === dayKey(d) ? settings.schedules.find(x => x.id === o.id && x.setId === settings.activeSetId) : null;
-  const selected = settings.schedules.find(x => x.id === viewScheduleId && x.setId === settings.activeSetId);
-  const sc = override || selected || schedulesForDay(d, settings.activeSetId)[0] || null;
-  return { sc, forced: Boolean(override && sc.id === override.id) };
+  const exception = dateExceptionFor(d), setId = activeSetForDay(d);
+  if (exception && exception.noSchool) return { sc: null, forced: true };
+  const override = exception && exception.scheduleId
+    ? settings.schedules.find(schedule => schedule.id === exception.scheduleId && schedule.setId === setId) : null;
+  const selected = settings.schedules.find(schedule => schedule.id === viewScheduleId && schedule.setId === setId);
+  const sc = override || selected || schedulesForDay(d, setId)[0] || null;
+  return { sc, forced: Boolean(override) };
 }
 
 // ---- Dashboard schedule-group controls ----
 // Schedules assigned to a weekday appear together in previews and set
 // comparisons. More than one schedule may be assigned to any weekday.
-function schedulesForDay(d, setId = settings.activeSetId) { return settings.schedules.filter(sc => sc.setId === setId && sc.days.includes(d.getDay())); }
+function schedulesForDay(d, setId = activeSetForDay(d)) {
+  const exception = dateExceptionFor(d);
+  if (exception && exception.noSchool) return [];
+  if (exception && exception.scheduleId) {
+    const schedule = settings.schedules.find(item => item.id === exception.scheduleId);
+    return schedule && schedule.setId === setId ? [schedule] : [];
+  }
+  return settings.schedules.filter(sc => sc.setId === setId && sc.days.includes(d.getDay()));
+}
+
+function compareSetForDay(date) {
+  const activeSetId = activeSetForDay(date), rotation = settings.rotation;
+  if (rotation.enabled && settings.compareSetId === activeSetId) {
+    return rotation.setAId === activeSetId ? rotation.setBId : rotation.setAId;
+  }
+  return settings.compareSetId;
+}
 
 let dashboardDateKey = "";
 function buildDashboardControls() {
   const today = new Date(), todayKey = dayKey(today);
   if (!settings.sets.some(set => set.id === settings.activeSetId)) settings.activeSetId = settings.sets[0].id;
-  if (settings.compareSetId === settings.activeSetId || !settings.sets.some(set => set.id === settings.compareSetId)) settings.compareSetId = "";
+  if (!settings.rotation.enabled && settings.compareSetId === settings.activeSetId) settings.compareSetId = "";
+  if (!settings.sets.some(set => set.id === settings.compareSetId)) settings.compareSetId = "";
+  const activeSetId = activeSetForDay(today), compareSetId = compareSetForDay(today);
   $("dashboardGroupControls").hidden = settings.sets.length < 2;
 
   const activeSelect = $("activeSetSelect"), compareSelect = $("compareSetSelect");
   activeSelect.textContent = "";
   settings.sets.forEach(set => activeSelect.append(mk("option", { value: set.id, textContent: setLabel(set) })));
-  activeSelect.value = settings.activeSetId;
+  activeSelect.value = activeSetId;
+  activeSelect.disabled = settings.rotation.enabled;
+  activeSelect.setAttribute("aria-label", settings.rotation.enabled ? "Schedule group selected by alternating weeks" : "Choose a schedule group to show");
   compareSelect.textContent = "";
   compareSelect.append(mk("option", { value: "", textContent: "Don’t compare" }));
-  settings.sets.filter(set => set.id !== settings.activeSetId)
+  settings.sets.filter(set => set.id !== activeSetId)
     .forEach(set => compareSelect.append(mk("option", { value: set.id, textContent: setLabel(set) })));
-  compareSelect.value = settings.compareSetId;
-  const activeSchedules = schedulesInSet(settings.activeSetId);
+  compareSelect.value = compareSetId;
+  const activeSchedules = schedulesInSet(activeSetId);
   if (dashboardDateKey && dashboardDateKey !== todayKey &&
-      !schedulesForDay(today, settings.activeSetId).some(sc => sc.id === viewScheduleId)) viewScheduleId = null;
+      !schedulesForDay(today, activeSetId).some(sc => sc.id === viewScheduleId)) viewScheduleId = null;
   dashboardDateKey = todayKey;
   if (!activeSchedules.some(sc => sc.id === viewScheduleId)) {
-    const override = settings.override && settings.override.date === todayKey &&
-      activeSchedules.some(sc => sc.id === settings.override.id) ? settings.override.id : null;
-    viewScheduleId = override || (schedulesForDay(today, settings.activeSetId)[0] || activeSchedules[0] || {}).id || null;
+    const exception = dateExceptionFor(today);
+    const override = exception && exception.scheduleId && activeSchedules.some(sc => sc.id === exception.scheduleId)
+      ? exception.scheduleId : null;
+    viewScheduleId = override || (schedulesForDay(today, activeSetId)[0] || activeSchedules[0] || {}).id || null;
   }
   const activeRingSelect = $("activeRingSchedule");
   activeRingSelect.textContent = "";
   activeSchedules.forEach(sc => activeRingSelect.append(mk("option", { value: sc.id, textContent: label(sc) })));
-  const todayOverride = settings.override && settings.override.date === todayKey
-    ? activeSchedules.find(sc => sc.id === settings.override.id) : null;
+  const todayException = dateExceptionFor(today);
+  const todayOverride = todayException && todayException.scheduleId
+    ? activeSchedules.find(sc => sc.id === todayException.scheduleId) : null;
   if (todayOverride) viewScheduleId = todayOverride.id;
   activeRingSelect.value = viewScheduleId || "";
-  activeRingSelect.disabled = Boolean(todayOverride);
+  activeRingSelect.disabled = Boolean(todayOverride || todayException && todayException.noSchool);
   activeRingSelect.onchange = e => {
-    chooseComparisonSchedule(settings.activeSetId, e.target.value);
+    chooseComparisonSchedule(activeSetId, e.target.value);
   };
 
-  const compareSchedules = schedulesInSet(settings.compareSetId);
-  const todaySchedules = schedulesForDay(today, settings.compareSetId);
+  const compareSchedules = schedulesInSet(compareSetId);
+  const todaySchedules = schedulesForDay(today, compareSetId);
   if (!compareSchedules.some(sc => sc.id === compareViewScheduleId))
     compareViewScheduleId = (todaySchedules[0] || compareSchedules[0] || {}).id || null;
   const compareRingSelect = $("compareRingSchedule");
@@ -434,16 +504,16 @@ function buildDashboardControls() {
   compareSchedules.forEach(sc => compareRingSelect.append(mk("option", { value: sc.id, textContent: label(sc) })));
   compareRingSelect.value = compareViewScheduleId || "";
   compareRingSelect.onchange = e => {
-    chooseComparisonSchedule(settings.compareSetId, e.target.value);
+    chooseComparisonSchedule(compareSetId, e.target.value);
   };
 
-  $("compareRingPanel").hidden = !settings.compareSetId;
-  $("ringPair").classList.toggle("is-comparing", Boolean(settings.compareSetId));
-  $("main").dataset.comparing = String(Boolean(settings.compareSetId));
-  $("hero").classList.toggle("compare-mode", Boolean(settings.compareSetId));
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
-  $("compareRingLabel").textContent = settings.sets.find(set => set.id === settings.compareSetId)
-    ? setLabel(settings.sets.find(set => set.id === settings.compareSetId)) : "Compared group";
+  $("compareRingPanel").hidden = !compareSetId;
+  $("ringPair").classList.toggle("is-comparing", Boolean(compareSetId));
+  $("main").dataset.comparing = String(Boolean(compareSetId));
+  $("hero").classList.toggle("compare-mode", Boolean(compareSetId));
+  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === activeSetId));
+  $("compareRingLabel").textContent = settings.sets.find(set => set.id === compareSetId)
+    ? setLabel(settings.sets.find(set => set.id === compareSetId)) : "Compared group";
   syncAllCustomSelects();
 }
 // Give ring content a quick, calm fade when the selected timetable changes.
@@ -460,11 +530,11 @@ function syncEditorScheduleToDashboard(schedule) {
   if (!schedule) return;
   const today = new Date();
   ensureComparisonDay(today);
-  if (schedule.setId === settings.activeSetId) {
+  if (schedule.setId === activeSetForDay(today)) {
     viewScheduleId = schedule.id;
     animateRingChange($("activeRingSchedule"));
   }
-  if (schedule.setId === settings.compareSetId) {
+  if (schedule.setId === compareSetForDay(today)) {
     compareViewScheduleId = schedule.id;
     animateRingChange($("compareRingSchedule"));
   }
@@ -474,6 +544,7 @@ function syncEditorScheduleToDashboard(schedule) {
   }
 }
 function setDashboardSet(id) {
+  if (settings.rotation.enabled) return;
   if (!settings.sets.some(set => set.id === id)) return;
   settings.activeSetId = id;
   if (settings.compareSetId === id) settings.compareSetId = "";
@@ -664,7 +735,12 @@ function flashHero() {
   const h = $("hero");
   h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash");
 }
-function fireAlert() { flashHero(); if (settings.alert.sound) beep(2, 880); }
+function fireAlert() {
+  flashHero(); if (settings.alert.sound) beep(2, 880);
+  if (settings.alert.notify && "Notification" in window && Notification.permission === "granted") {
+    try { new Notification("School Schedule", { body: "Class is about to end", icon: "icon.svg" }); } catch (_) {}
+  }
+}
 function confetti() {
   // Confetti is decorative only and is skipped by tick() for reduced-motion
   // users. Its container is cleared after the longest piece has fallen.
@@ -710,7 +786,7 @@ function renderList(daySchedules, d, now) {
     const adjusted = checked.ok ? applyAdjust(checked.list, d).list : null;
     const periods = adjusted && adjusted.length ? adjusted : null;
     if (daySchedules.length > 1) {
-      ol.append(mk("li", { className: "schedule-heading", textContent: schedule.name || "Untitled schedule" }));
+      ol.append(mk("li", { className: "schedule-heading", textContent: label(schedule) }));
     }
     if (!periods) {
       ol.append(mk("li", { className: "empty", textContent: checked.ok ? "No classes in this schedule." : "This schedule needs attention: " + checked.msg }));
@@ -735,9 +811,12 @@ function renderList(daySchedules, d, now) {
       const left = mk("span", {}, mk("span", { className: "nm", textContent: p.name }));
       const description = detail(p);
       if (description) left.append(mk("span", { className: "dt", textContent: description }));
-      ol.append(mk("li", { className: i === current ? "cur" : now >= p.end ? "done" : "" },
+      const cls = [i === current ? "cur" : now >= p.end ? "done" : "", !description ? "no-detail" : ""].filter(Boolean).join(" ");
+      const li = mk("li", { className: cls },
         left,
-        mk("span", { className: "t", textContent: span(p.start, p.end) })));
+        mk("span", { className: "t", textContent: span(p.start, p.end) }));
+      if (i === current) li.style.setProperty("--progress", Math.round((now - p.start) / (p.end - p.start) * 100) + "%");
+      ol.append(li);
     });
   });
 }
@@ -784,15 +863,16 @@ function ensureComparisonDay(today) {
 }
 function syncComparisonRingSelections(today, preserveSetId = "") {
   const comparisonDate = dayDateInCurrentWeek(comparisonDayIndex, today);
-  for (const setId of [settings.activeSetId, settings.compareSetId]) {
+  const activeSetId = activeSetForDay(comparisonDate), compareSetId = compareSetForDay(comparisonDate);
+  for (const setId of [activeSetId, compareSetId]) {
     const assigned = schedulesForDay(comparisonDate, setId);
     if (!assigned.length) continue;
-    const selectedId = setId === settings.activeSetId ? viewScheduleId : compareViewScheduleId;
+    const selectedId = setId === activeSetId ? viewScheduleId : compareViewScheduleId;
     if (assigned.some(schedule => schedule.id === selectedId)) continue;
     const nextId = setId === preserveSetId && selectedId
       ? selectedId
       : assigned[0].id;
-    if (setId === settings.activeSetId) viewScheduleId = nextId;
+    if (setId === activeSetId) viewScheduleId = nextId;
     else compareViewScheduleId = nextId;
   }
   $("activeRingSchedule").value = viewScheduleId || "";
@@ -813,14 +893,15 @@ function chooseComparisonDay(dayIndex, today = new Date()) {
 function chooseComparisonSchedule(setId, scheduleId) {
   const schedule = settings.schedules.find(item => item.id === scheduleId && item.setId === setId);
   if (!schedule) return;
-  const isActive = setId === settings.activeSetId;
+  const today = new Date();
+  ensureComparisonDay(today);
+  const comparisonDate = dayDateInCurrentWeek(comparisonDayIndex, today);
+  const isActive = setId === activeSetForDay(comparisonDate);
   const currentId = isActive ? viewScheduleId : compareViewScheduleId;
   if (currentId === scheduleId) return;
   if (isActive) viewScheduleId = scheduleId;
   else compareViewScheduleId = scheduleId;
 
-  const today = new Date();
-  ensureComparisonDay(today);
   if (schedule.days.length && !schedule.days.includes(comparisonDayIndex)) {
     comparisonDayIndex = schedule.days.includes(today.getDay()) ? today.getDay() : schedule.days[0];
     syncComparisonRingSelections(today, setId);
@@ -837,11 +918,12 @@ function buildSetComparison(today, now) {
   const root = $("weekComparison"), dayTabs = $("compareDayTabs");
   root.textContent = "";
   dayTabs.textContent = "";
-  const active = settings.sets.find(set => set.id === settings.activeSetId);
-  const compare = settings.sets.find(set => set.id === settings.compareSetId);
-  if (!active || !compare) return;
   ensureComparisonDay(today);
   const comparisonDate = dayDateInCurrentWeek(comparisonDayIndex, today);
+  const activeSetId = activeSetForDay(comparisonDate), compareSetId = compareSetForDay(comparisonDate);
+  const active = settings.sets.find(set => set.id === activeSetId);
+  const compare = settings.sets.find(set => set.id === compareSetId);
+  if (!active || !compare) return;
   const isToday = comparisonDayIndex === today.getDay();
   $("comparisonTitle").textContent = "Compare schedules";
   $("comparisonHint").textContent = comparisonDate.toLocaleDateString(undefined, {
@@ -869,7 +951,7 @@ function buildSetComparison(today, now) {
     column.append(mk("h3", {},
       mk("span", { textContent: setLabel(set) }),
       mk("span", { className: "compare-set-count", textContent: countText })));
-    const selectedId = set.id === settings.activeSetId ? viewScheduleId : compareViewScheduleId;
+    const selectedId = set.id === activeSetId ? viewScheduleId : compareViewScheduleId;
     const selectedSchedule = settings.schedules.find(item => item.id === selectedId && item.setId === set.id);
     const needsPreview = Boolean(selectedSchedule && !schedules.some(schedule => schedule.id === selectedSchedule.id));
     const schedulesToShow = needsPreview ? [...schedules, selectedSchedule] : schedules;
@@ -917,8 +999,9 @@ function buildSetComparison(today, now) {
   }
 }
 function updateSetComparisonLive(today, now) {
+  const activeSetId = activeSetForDay(today);
   document.querySelectorAll(".compare-schedule[data-schedule-id]").forEach(card => {
-    const selectedId = card.dataset.setId === settings.activeSetId ? viewScheduleId : compareViewScheduleId;
+    const selectedId = card.dataset.setId === activeSetId ? viewScheduleId : compareViewScheduleId;
     card.classList.toggle("ring-selected", card.dataset.scheduleId === selectedId);
   });
   document.querySelectorAll(".compare-live[data-schedule-id]").forEach(status => {
@@ -935,22 +1018,23 @@ function updateSetComparisonLive(today, now) {
   });
 }
 function updateComparisonRings(today, now, activeSchedule) {
-  const comparing = Boolean(settings.compareSetId && settings.compareSetId !== settings.activeSetId);
+  const activeSetId = activeSetForDay(today), compareSetId = compareSetForDay(today);
+  const comparing = Boolean(compareSetId && compareSetId !== activeSetId);
   $("ringPair").classList.toggle("is-comparing", comparing);
   $("compareRingPanel").hidden = !comparing;
   $("main").dataset.comparing = String(comparing);
   $("hero").classList.toggle("compare-mode", comparing);
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
-  const active = activeSchedule || schedulesForDay(today, settings.activeSetId)[0];
-  if (!comparing) { $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId)); return; }
-  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === settings.activeSetId));
+  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === activeSetId));
+  const active = activeSchedule || schedulesForDay(today, activeSetId)[0];
+  if (!comparing) { $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === activeSetId)); return; }
+  $("activeRingLabel").textContent = setLabel(settings.sets.find(set => set.id === activeSetId));
   if (active) {
     const own = scheduleSnapshot(active, today, now);
     $("ring").style.strokeDashoffset = RING * (1 - Math.min(100, Math.max(0, own.progress || 0)) / 100);
     $("ringProgress").setAttribute("aria-valuenow", String(Math.round(Math.min(100, Math.max(0, own.progress || 0)))));
   }
-  const comparedSet = settings.sets.find(set => set.id === settings.compareSetId);
-  const compared = settings.schedules.find(schedule => schedule.id === compareViewScheduleId && schedule.setId === settings.compareSetId);
+  const comparedSet = settings.sets.find(set => set.id === compareSetId);
+  const compared = settings.schedules.find(schedule => schedule.id === compareViewScheduleId && schedule.setId === compareSetId);
   $("compareRingLabel").textContent = comparedSet ? setLabel(comparedSet) : "Compared group";
   if (!compared) {
     $("compareRingCount").textContent = "--:--";
@@ -969,12 +1053,13 @@ function updateComparisonRings(today, now, activeSchedule) {
 }
 function renderSetComparison(today, now) {
   const panel = $("comparison");
-  const show = settings.compareSetId && settings.compareSetId !== settings.activeSetId;
+  const activeSetId = activeSetForDay(today), compareSetId = compareSetForDay(today);
+  const show = compareSetId && compareSetId !== activeSetId;
   panel.hidden = !show;
   if (!show) { comparisonRenderKey = ""; return; }
   ensureComparisonDay(today);
-  const key = JSON.stringify([dayKey(today), comparisonDayIndex, settings.activeSetId, settings.compareSetId,
-    viewScheduleId, compareViewScheduleId, settings.use24, settings.sets, settings.schedules, settings.adjust]);
+  const key = JSON.stringify([dayKey(today), comparisonDayIndex, activeSetId, compareSetId,
+    viewScheduleId, compareViewScheduleId, settings.use24, settings.sets, settings.schedules, settings.rotation, settings.exceptions]);
   if (key !== comparisonRenderKey) { buildSetComparison(today, now); comparisonRenderKey = key; }
   updateSetComparisonLive(today, now);
 }
@@ -990,12 +1075,13 @@ function tick() {
   $("dnum").textContent = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
   $("clock").textContent = fmtNow(d);
 
+  const activeSetId = activeSetForDay(d);
   const { sc, forced } = activeSchedule(d);
   renderSetComparison(d, now);
-  const assignedToday = schedulesForDay(d, settings.activeSetId);
+  const assignedToday = schedulesForDay(d, activeSetId);
   // The ring can preview one schedule, but the normal day list includes every
   // schedule assigned to today. If none are assigned, keep the preview useful.
-  const listSchedules = forced ? [sc] : assignedToday.length ? assignedToday : (sc ? [sc] : []);
+  const listSchedules = forced ? (sc ? [sc] : []) : assignedToday.length ? assignedToday : (sc ? [sc] : []);
   $("scheduleTitle").textContent = assignedToday.length > 1 ? "Today’s schedules" : sc ? label(sc) + " schedule" : "Today’s schedule";
   const res = sc ? check(sc.periods) : null;
   let P = res && res.ok ? res.list : null, adjusted = false;
@@ -1004,13 +1090,13 @@ function tick() {
   if (!C.length) P = null;
   const pill = $("pill");
   const previewing = Boolean(sc && !sc.days.includes(d.getDay()));
-  pill.hidden = !(P && (schedulesInSet(settings.activeSetId).length > 1 || forced || adjusted || previewing));
+  pill.hidden = !(P && (schedulesInSet(activeSetId).length > 1 || forced || adjusted || previewing));
   if (P) {
     const notes = [];
-    if (forced) notes.push("today only");
+    if (forced) notes.push("date change");
     if (adjusted) notes.push("adjusted");
     if (previewing) notes.push("preview");
-    pill.textContent = label(sc) + (notes.length ? " (" + notes.join(", ") + ")" : "");
+    pill.textContent = previewing ? "Preview" : notes.length ? notes.join(" · ") : label(sc);
   }
 
   // These output fields are assembled by the state branches below, then written
@@ -1021,14 +1107,14 @@ function tick() {
       mode = "off", tone = "", level = "", badge = "", badgeKind = "info", hype = 0, leftSec = -1, dk = "";
 
   if (!P) {
-    nowTxt = "No school today"; count = "--:--"; sub = "Enjoy it."; key = "none";
+    nowTxt = "No school today"; count = "--:--"; sub = "Enjoy it."; key = "none|" + dayKey(d);
     if (fx) { tone = "off"; badge = "Day off"; }
   } else {
     const first = C[0], last = C[C.length - 1], dayLen = last.end - first.start;
     cur = P.findIndex(p => now >= p.start && now < p.end);
     const item = cur >= 0 ? P[cur] : null;
     const nextClass = from => C.find(p => p.start >= from);
-    key = sc.id + "|" + cur + "|" + (now >= last.end) + "|" + (now < first.start) + "|" + adjusted;
+    key = sc.id + "|" + dayKey(d) + "|" + cur + "|" + (now >= last.end) + "|" + (now < first.start) + "|" + adjusted;
     // Select one of three day phases. Passing periods and unlisted gaps share
     // the same countdown mode, while class mode can trigger end-of-class alerts.
     if (now < first.start) {
@@ -1115,8 +1201,10 @@ function tick() {
   root.dataset.tone = tone; root.dataset.level = level;
   root.style.setProperty("--hype", hype.toFixed(3));
   $("hero").dataset.mode = mode;
-  const bd = $("badge"); bd.hidden = !badge; bd.textContent = badge; bd.dataset.kind = badgeKind;
+  $("ringPair").classList.toggle("is-finished", mode === "out" || mode === "off");
+  const bd = $("badge"); bd.hidden = !badge || mode === "out" || mode === "off"; bd.textContent = badge; bd.dataset.kind = badgeKind;
   $("statLeft").dataset.final = fx && leftSec >= 0 ? (leftSec <= 600 ? "2" : leftSec <= 3600 ? "1" : "") : "";
+  $("statLeft").hidden = mode === "out" || mode === "off";
 
   $("now").textContent = nowTxt;
   $("count").textContent = count;
@@ -1131,14 +1219,17 @@ function tick() {
   $("schoolLeft").textContent = sLeft;
   $("schoolPct").textContent = P ? Math.floor(Math.min(100, sPct)) + "% through the day" : "";
   const nt = $("noteTxt");
-  nt.textContent = noteTxt || "No note for this period.";
-  nt.classList.toggle("muted", !noteTxt);
+  nt.textContent = noteTxt;
+  $("noteCard").hidden = !noteTxt;
+  $("stats").classList.toggle("single-stat", $("statLeft").hidden || !noteTxt);
+  $("stats").hidden = $("statLeft").hidden && !noteTxt;
   const live = P && now >= C[0].start && now < C[C.length - 1].end;
   document.title = live ? (level === "danger" ? "! " : "") + count + " · " + nowTxt : "School Schedule";
+  if (lastKey && key !== lastKey) $("announcement").textContent = [nowTxt, sub].filter(Boolean).join(". ");
 
   // Key list rendering by every schedule's contents and live time segment, so
   // secondary schedules update independently of the schedule shown by the ring.
-  const listKey = JSON.stringify([dayKey(d), settings.showPassing, settings.adjust,
+  const listKey = JSON.stringify([dayKey(d), settings.showPassing, settings.exceptions,
     listSchedules.map(schedule => {
       const checked = check(schedule.periods);
       const periods = checked.ok ? applyAdjust(checked.list, d).list : [];
@@ -1173,7 +1264,9 @@ function buildSetTabs() {
   });
   const add = mk("button", { type: "button", className: "alt tab", textContent: "+ Copy group" });
   add.onclick = () => {
-    const source = schedulesInSet(settings.editingSetId), id = newId("set");
+    const source = schedulesInSet(settings.editingSetId);
+    if (!source.length) return;
+    const id = newId("set");
     const set = { id, name: "Group " + (settings.sets.length + 1) };
     settings.sets.push(set);
     const copies = source.map(schedule => ({ ...clone(schedule), id: newId(), setId: id }));
@@ -1211,45 +1304,122 @@ function buildTabs() {
   };
   tabs.append(add);
 }
+function currentMondayKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - (date.getDay() + 6) % 7);
+  return dayKey(date);
+}
+function buildRotationUI() {
+  const rotation = settings.rotation, a = $("rotationA"), b = $("rotationB");
+  [a, b].forEach(select => {
+    select.textContent = "";
+    settings.sets.forEach(set => select.append(mk("option", { value: set.id, textContent: setLabel(set) })));
+  });
+  a.value = settings.sets.some(set => set.id === rotation.setAId) ? rotation.setAId : settings.activeSetId;
+  const otherSet = settings.sets.find(set => set.id !== a.value);
+  b.value = settings.sets.some(set => set.id === rotation.setBId && set.id !== a.value)
+    ? rotation.setBId : (otherSet || {}).id || a.value;
+  $("rotationAnchor").value = rotation.anchorMonday || currentMondayKey();
+  $("rotationOn").checked = rotation.enabled;
+  $("rotationOn").disabled = settings.sets.length < 2;
+  $("rotationControls").hidden = !rotation.enabled;
+  $("rotationStatus").textContent = settings.sets.length < 2
+    ? "Copy a schedule group before enabling alternating weeks."
+    : rotation.enabled
+      ? "Week A and Week B alternate every Monday from the selected start date."
+      : "Rotation is off.";
+}
+function updateRotation() {
+  const enabled = $("rotationOn").checked, setAId = $("rotationA").value, setBId = $("rotationB").value;
+  const anchorMonday = $("rotationAnchor").value;
+  if (enabled && (setAId === setBId || !Core.isMonday(anchorMonday))) {
+    buildRotationUI();
+    $("rotationStatus").textContent = setAId === setBId
+      ? "Choose two different schedule groups for Week A and Week B."
+      : "The Week A start date must be a Monday.";
+    return;
+  }
+  settings.rotation = { enabled, anchorMonday, setAId, setBId };
+  $("rotationControls").hidden = !enabled;
+  $("rotationStatus").textContent = enabled
+    ? "Week A and Week B alternate every Monday from the selected start date."
+    : "Rotation is off.";
+  save();
+  buildDashboardControls();
+  lastKey = "";
+  comparisonRenderKey = "";
+  tick();
+}
+for (const id of ["rotationOn", "rotationA", "rotationB", "rotationAnchor"])
+  $(id).addEventListener("change", updateRotation);
+
 function buildToday() {
-  // Today-only controls are populated from the override records only when their
-  // stored date matches today's local calendar date.
+  const dateInput = $("exceptionDate");
+  if (!Core.isValidDateKey(dateInput.value)) dateInput.value = dayKey(new Date());
+  const selectedDate = dateFromKey(dateInput.value);
   const sel = $("today"); sel.textContent = "";
-  sel.append(mk("option", { value: "", textContent: "Use the schedule assigned to this day" }));
-  schedulesInSet().forEach(s => sel.append(mk("option", { value: s.id, textContent: label(s) })));
-  const today = dayKey(new Date()), o = settings.override, a = settings.adjust;
-  sel.value = o && o.date === today ? o.id : "";
-  $("shift").value = a && a.date === today ? a.shift : 0;
-  $("endAt").value = a && a.date === today ? a.endAt : "";
+  sel.append(mk("option", { value: "", textContent: "Use the normal weekly schedule" }));
+  sel.append(mk("option", { value: "__no_school", textContent: "No school" }));
+  settings.sets.forEach(set => schedulesInSet(set.id).forEach(schedule => {
+    sel.append(mk("option", { value: schedule.id, textContent: setLabel(set) + " — " + label(schedule) }));
+  }));
+  const exception = dateExceptionFor(selectedDate);
+  sel.value = exception ? exception.noSchool ? "__no_school" : exception.scheduleId || "" : "";
+  $("shift").value = exception ? exception.shift : 0;
+  $("endAt").value = exception ? exception.endAt : "";
+  $("shift").disabled = Boolean(exception && exception.noSchool);
+  $("endAt").disabled = Boolean(exception && exception.noSchool);
   syncAllCustomSelects();
   renderAdjustmentPreview();
 }
 function renderAdjustmentPreview() {
-  const today = new Date(), selectedId = $("today").value;
-  const schedule = selectedId
-    ? settings.schedules.find(item => item.id === selectedId && item.setId === settings.editingSetId)
-    : activeSchedule(today).sc || schedulesForDay(today, settings.editingSetId)[0];
+  const dateKey = $("exceptionDate").value;
+  const date = dateFromKey(dateKey);
+  const selectedId = $("today").value, saved = date ? dateExceptionFor(date) : null;
   const preview = $("adjustPreview"), apply = $("applyToday");
-  if (!schedule) {
-    preview.textContent = "Choose or create a schedule to preview today’s times.";
-    apply.disabled = true; return;
+  preview.dataset.pending = "false";
+  $("clearToday").disabled = !saved;
+  if (!date) {
+    preview.textContent = "Choose a valid date.";
+    apply.disabled = true;
+    return;
   }
-  const checked = check(schedule.periods);
-  if (!checked.ok) {
-    preview.textContent = "Fix the schedule times before previewing today’s changes.";
-    apply.disabled = true; return;
+  if (selectedId === "__no_school") {
+    preview.textContent = "No school on " + date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) + ".";
+    const same = Boolean(saved && saved.noSchool && !saved.scheduleId && !saved.shift && !saved.endAt);
+    preview.dataset.pending = String(!same);
+    apply.disabled = same;
+    $("shift").disabled = true;
+    $("endAt").disabled = true;
+    return;
   }
+  $("shift").disabled = false;
+  $("endAt").disabled = false;
+  const schedule = selectedId
+    ? settings.schedules.find(item => item.id === selectedId)
+    : schedulesForDay(date)[0] || activeSchedule(date).sc;
   const rawShift = Number($("shift").value);
   const shift = Number.isFinite(rawShift) ? Math.max(-180, Math.min(300, Math.round(rawShift))) : 0;
   const endAt = toSec($("endAt").value) != null ? $("endAt").value : "";
+  const same = saved
+    ? !saved.noSchool && saved.scheduleId === selectedId && saved.shift === shift && (saved.endAt || "") === endAt
+    : !selectedId && !shift && !endAt;
+  if (!schedule) {
+    preview.textContent = "No schedule is assigned on this date. Choose a schedule or mark it No school.";
+    apply.disabled = same || !selectedId && !shift && !endAt;
+    return;
+  }
+  const checked = check(schedule.periods);
+  if (!checked.ok) {
+    preview.textContent = "Fix the schedule times before previewing this date.";
+    apply.disabled = true; return;
+  }
   const cutoff = toSec(endAt);
   const original = checked.list.filter(period => period.kind !== "passing");
   const changed = checked.list.map(period => ({ ...period, start: period.start + shift * 60, end: period.end + shift * 60 }))
     .filter(period => cutoff == null || period.start < cutoff)
     .map(period => cutoff == null ? period : ({ ...period, end: Math.min(period.end, cutoff) }))
     .filter(period => period.kind !== "passing" && period.end > period.start);
-  const saved = settings.adjust && settings.adjust.date === dayKey(today) ? settings.adjust : { shift: 0, endAt: "" };
-  const same = saved.shift === shift && (saved.endAt || "") === endAt;
   const time = sec => fmtClock((sec + 86400) % 86400);
   if (!changed.length) preview.textContent = "With these changes, no classes remain on the schedule.";
   else if (!original.length) preview.textContent = "This schedule has no class periods to preview.";
@@ -1366,6 +1536,7 @@ function buildSchedUI() {
   // switches, imports, deletions, and resets.
   const sc = ed();
   buildSetTabs();
+  buildRotationUI();
   buildTabs();
   renderWeekOverview();
   $("sname").value = sc.name;
@@ -1408,25 +1579,35 @@ $("passMin").oninput = () => {
   let v = Math.round(Number($("passMin").value)); if (!Number.isFinite(v)) v = 5;
   ed().passing = Math.max(0, Math.min(30, v)); save();
 };
-$("today").onchange = e => {
-  settings.override = e.target.value ? { date: dayKey(new Date()), id: e.target.value } : null;
-  if (settings.override) settings.activeSetId = settings.editingSetId;
-  viewScheduleId = settings.override ? settings.override.id : (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
-  buildDashboardControls();
-  save(); renderAdjustmentPreview(); lastKey = ""; tick();
+$("exceptionDate").onchange = buildToday;
+$("today").onchange = () => {
+  renderAdjustmentPreview();
+  syncAllCustomSelects();
 };
 $("shift").oninput = $("endAt").oninput = renderAdjustmentPreview;
 $("applyToday").onclick = () => {
+  const date = $("exceptionDate").value;
+  if (!Core.isValidDateKey(date)) {
+    $("adjustPreview").textContent = "Choose a valid date before saving.";
+    $("applyToday").disabled = true;
+    return;
+  }
+  const selectedId = $("today").value;
+  const noSchool = selectedId === "__no_school";
   const shiftValue = Number($("shift").value);
-  const shift = Number.isFinite(shiftValue) ? Math.max(-180, Math.min(300, Math.round(shiftValue))) : 0;
-  const endAt = toSec($("endAt").value) != null ? $("endAt").value : "";
-  settings.adjust = shift || endAt ? { date: dayKey(new Date()), shift, endAt } : null;
-  save(); buildToday(); buildDashboardControls(); lastKey = ""; tick();
+  const shift = noSchool ? 0 : Number.isFinite(shiftValue) ? Math.max(-180, Math.min(300, Math.round(shiftValue))) : 0;
+  const endAt = noSchool || toSec($("endAt").value) == null ? "" : $("endAt").value;
+  settings.exceptions = settings.exceptions.filter(exception => exception.date !== date);
+  if (noSchool || selectedId || shift || endAt) {
+    settings.exceptions.push({ date, noSchool, scheduleId: noSchool ? "" : selectedId, shift, endAt });
+    settings.exceptions.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  save(); buildToday(); buildDashboardControls(); lastKey = ""; comparisonRenderKey = ""; tick();
 };
 $("clearToday").onclick = () => {
-  settings.override = null; settings.adjust = null;
-  viewScheduleId = (schedulesForDay(new Date(), settings.activeSetId)[0] || {}).id || null;
-  save(); buildToday(); buildDashboardControls(); lastKey = ""; tick();
+  const date = $("exceptionDate").value;
+  settings.exceptions = settings.exceptions.filter(exception => exception.date !== date);
+  save(); buildToday(); buildDashboardControls(); lastKey = ""; comparisonRenderKey = ""; tick();
 };
 const LAST_MIN = 23 * 3600 + 59 * 60;
 function endOfDay(rows) { // Latest ending time, or null if the editor has no usable times.
@@ -1483,7 +1664,7 @@ function arm(btn, confirmText, action) {
 arm($("del"), "Tap again to delete", () => {
   const id = settings.editing;
   settings.schedules = settings.schedules.filter(s => s.id !== id);
-  if (settings.override && settings.override.id === id) settings.override = null;
+  removeExceptionsForMissingSchedules();
   settings.editing = schedulesInSet(settings.editingSetId)[0].id;
   if (viewScheduleId === id) viewScheduleId = null;
   save(); buildSchedUI(); lastKey = ""; tick();
@@ -1492,7 +1673,16 @@ arm($("deleteSet"), "Tap again to delete group", () => {
   const removed = settings.editingSetId;
   settings.sets = settings.sets.filter(set => set.id !== removed);
   settings.schedules = settings.schedules.filter(schedule => schedule.setId !== removed);
-  if (settings.override && !settings.schedules.some(schedule => schedule.id === settings.override.id)) settings.override = null;
+  removeExceptionsForMissingSchedules();
+  if (settings.rotation.setAId === removed || settings.rotation.setBId === removed) {
+    const [setA, setB] = settings.sets;
+    settings.rotation = {
+      enabled: false,
+      anchorMonday: settings.rotation.anchorMonday,
+      setAId: setA ? setA.id : "",
+      setBId: setB ? setB.id : ""
+    };
+  }
   settings.editingSetId = settings.sets[0].id;
   settings.editing = schedulesInSet(settings.editingSetId)[0].id;
   if (settings.activeSetId === removed) settings.activeSetId = settings.editingSetId;
@@ -1538,6 +1728,7 @@ function buildThemeUI() {
   $("alOn").checked = settings.alert.on;
   $("alMins").value = String(settings.alert.mins);
   $("alSound").checked = settings.alert.sound;
+  $("alNotify").checked = settings.alert.notify;
 }
 $("fmt").onchange = e => { settings.use24 = e.target.value === "24"; save(); applyDisplay(); };
 $("size").onchange = e => { settings.size = e.target.value; save(); applyDisplay(); };
@@ -1555,6 +1746,7 @@ $("showPass").onchange = e => { settings.showPassing = e.target.checked; save();
 $("alOn").onchange = e => { settings.alert.on = e.target.checked; save(); tick(); };
 $("alMins").onchange = e => { settings.alert.mins = +e.target.value; save(); tick(); };
 $("alSound").onchange = e => { settings.alert.sound = e.target.checked; save(); if (e.target.checked) beep(1, 880); };
+$("alNotify").onchange = async e => { settings.alert.notify = e.target.checked; if (e.target.checked && "Notification" in window && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch (_) {} } save(); };
 $("alTest").onclick = () => beep(2, 880);
 
 // ---- Share and import ----
@@ -1630,15 +1822,13 @@ function importPayload(o, mode = "replace") {
     return copy;
   });
   settings.schedules = [...retained, ...added];
+  removeExceptionsForMissingSchedules();
   settings.editingSetId = targetId;
   settings.editing = added[0].id;
   if (settings.activeSetId === targetId) viewScheduleId = added[0].id;
   if (mode === "replace") {
-    const remainingIds = new Set(settings.schedules.map(item => item.id));
-    if (settings.override && !remainingIds.has(settings.override.id)) settings.override = null;
-    if (settings.activeSetId === targetId) settings.adjust = null;
-    if (o.theme) settings.theme = sanitize(o).theme;
     const importedSettings = sanitize(o);
+    if (o.theme) settings.theme = importedSettings.theme;
     if ("use24" in o || "seconds" in o || "size" in o) { settings.use24 = importedSettings.use24; settings.seconds = importedSettings.seconds; settings.size = importedSettings.size; }
     if ("showPassing" in o) settings.showPassing = importedSettings.showPassing;
     if ("effects" in o) settings.effects = importedSettings.effects;
@@ -1779,7 +1969,7 @@ dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
 
 // ---- Feedback form submission ----
 // The optional name is the only identifying field the app sends to the sheet.
-const feedbackDlg = $("feedbackDlg"), feedbackForm = $("feedbackForm");
+const feedbackForm = $("feedbackForm");
 const feedbackStatus = $("feedbackStatus"), feedbackMessage = $("feedbackMessage");
 const feedbackCount = $("feedbackCount"), feedbackSubmit = $("sendFeedback");
 // Normalize common punctuation/number substitutions before matching whole words.
@@ -1805,13 +1995,8 @@ const validFeedbackEndpoint = (() => {
     return u.protocol === "https:" && u.hostname === "script.google.com" && /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname);
   } catch (e) { return false; }
 })();
-$("openFeedback").onclick = () => {
-  feedbackStatus.dataset.error = String(!validFeedbackEndpoint);
-  feedbackStatus.textContent = validFeedbackEndpoint ? "" : "The Google Sheets feedback connection is not set up yet.";
-  feedbackDlg.showModal();
-};
-$("feedbackClose").onclick = () => feedbackDlg.close();
-feedbackDlg.addEventListener("click", e => { if (e.target === feedbackDlg) feedbackDlg.close(); });
+feedbackStatus.dataset.error = String(!validFeedbackEndpoint);
+feedbackStatus.textContent = validFeedbackEndpoint ? "" : "The Google Sheets feedback connection is not set up yet.";
 feedbackMessage.addEventListener("input", () => {
   feedbackCount.textContent = feedbackMessage.value.length + " / 1200";
 });
@@ -1864,22 +2049,43 @@ feedbackForm.addEventListener("submit", async e => {
   } finally { feedbackSubmit.disabled = false; }
 });
 
+// Keep offline page caching independent of browser installation support.
+const supportsServiceWorkers = "serviceWorker" in navigator;
+const secureServiceWorkerOrigin = location.protocol === "https:" || ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
+if (supportsServiceWorkers && secureServiceWorkerOrigin) {
+  navigator.serviceWorker.register("./sw.js")
+    .catch(error => console.error("Could not register the offline page cache.", error));
+}
+
 // ---- Keyboard shortcuts ----
-// Shortcuts act only on the page itself. Editing controls, modified
-// key combinations, and open dialogs keep their normal browser behavior.
-const keysDlg = $("keysDlg");
-$("helpKeys").onclick = () => keysDlg.showModal();
-$("keysClose").onclick = () => keysDlg.close();
-keysDlg.addEventListener("click", e => { if (e.target === keysDlg) keysDlg.close(); });
 document.addEventListener("keydown", e => {
-  if (e.ctrlKey || e.metaKey || e.altKey || dlg.open || keysDlg.open) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || dlg.open) return;
   if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable='true']")) return;
   if (e.key.toLowerCase() === "s") { e.preventDefault(); dlg.showModal(); }
   else if (e.key.toLowerCase() === "t") {
     $("scheduleTitle").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
     $("scheduleTitle").focus({ preventScroll: true });
-  } else if (e.key === "?") keysDlg.showModal();
+  } else if (e.key === "Escape" && document.body.classList.contains("fs-mode")) {
+    $("fsBtn").click();
+  }
 });
+
+// ---- Fullscreen mode ----
+(function () {
+  const btn = $("fsBtn"); if (!btn) return;
+  function setFullscreen(active) {
+    document.body.classList.toggle("fs-mode", active);
+    btn.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
+    btn.title = active ? "Exit fullscreen" : "Enter fullscreen";
+    btn.setAttribute("aria-pressed", String(active));
+    const ringWrap = $("singleRingWrap");
+    if (ringWrap) ringWrap.classList.toggle("fs-ring", active);
+  };
+  btn.onclick = () => setFullscreen(!document.body.classList.contains("fs-mode"));
+})();
+
+// ---- Version display ----
+(function () { const v = $("version"); if (v) v.textContent = "v" + VERSION; })();
 
 // ---- Settings tab navigation ----
 // Tabs keep the dialog compact. Remember the last section locally, but
@@ -1911,6 +2117,10 @@ document.addEventListener("keydown", e => {
     btns[next].click();
   });
   let start = read();
+  if (start === "share") {
+    start = "data";
+    try { localStorage.setItem("settingsTab", start); } catch (e) {}
+  }
   if (!panels.some(p => p.dataset.tab === start)) start = "schedules";
   show(start);
 })();
@@ -1959,7 +2169,7 @@ $("setupForm").addEventListener("submit", e => {
   settings.schedules = [schedule];
   settings.editing = schedule.id; settings.editingSetId = schedule.setId;
   settings.activeSetId = schedule.setId; settings.compareSetId = "";
-  settings.override = null; settings.adjust = null;
+  settings.exceptions = [];
   viewScheduleId = null; compareViewScheduleId = null;
   save(); buildAll(); $("setupDlg").close();
 });

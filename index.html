@@ -9,7 +9,7 @@
 <meta property="og:title" content="School Schedule">
 <meta property="og:description" content="How much school is left today?">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="styles.css?v=2.0.22">
+<link rel="stylesheet" href="styles.css?v=2.0.23">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="shortcut icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -145,22 +145,24 @@
     </div>
 
     <div class="panel" data-tab="schedules">
-    <p class="hint">Set up groups, schedules, and the days they run.</p>
-    <div class="set-manager">
-      <p class="label">Schedule groups</p>
-      <div class="tabs set-tabs" id="setTabs" role="group" aria-label="Choose a schedule group to edit"></div>
-      <p class="hint">Groups hold separate weekly plans.</p>
-      <label class="field"><span class="label">Group name</span><input type="text" id="setName" maxlength="40"></label>
-      <details class="advanced-actions group-options">
-        <summary>Group actions</summary>
-        <div class="btns"><button class="alt" id="deleteSet" type="button">Delete group</button></div>
-      </details>
-    </div>
+    <p class="hint">Edit periods here. Group and date tools are under Advanced scheduling.</p>
     <details class="advanced-scheduling">
       <summary>Advanced scheduling</summary>
+    <details class="group-settings">
+      <summary>Schedule groups</summary>
+      <div class="set-manager">
+        <div class="tabs set-tabs" id="setTabs" role="group" aria-label="Choose a schedule group to edit"></div>
+        <p class="hint">Create separate weekly plans.</p>
+        <label class="field"><span class="label">Group name</span><input type="text" id="setName" maxlength="40"></label>
+        <details class="advanced-actions group-options">
+          <summary>Group actions</summary>
+          <div class="btns"><button class="alt" id="deleteSet" type="button">Delete group</button></div>
+        </details>
+      </div>
+    </details>
     <details class="rotation-settings">
       <summary>Alternating weeks</summary>
-      <p class="hint">Choose two groups and the Monday Week A starts; they alternate weekly.</p>
+      <p class="hint">Pick two groups and the Monday Week A starts.</p>
       <label class="opt">Alternate schedule groups weekly <input type="checkbox" id="rotationOn"></label>
       <div id="rotationControls" hidden>
         <label class="opt">Week A schedule group <select id="rotationA"></select></label>
@@ -171,15 +173,13 @@
     </details>
     <details class="week-preview">
       <summary>Preview the week</summary>
-      <p class="hint">See schedules by day.</p>
       <div class="week-overview" id="weekOverview" aria-label="Weekly schedule overview"></div>
     </details>
     <details class="today">
       <summary>Change a specific date</summary>
-      <p class="hint">Set a holiday or adjust one day.</p>
+      <p class="hint">Override one date; choose the weekly schedule to clear it.</p>
       <label class="opt">Date <input type="date" id="exceptionDate"></label>
       <label class="opt">Schedule for this date <select id="today"></select></label>
-      <p class="hint">Use the normal weekly schedule to remove a schedule override.</p>
       <label class="opt">Move all class times (minutes) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
       <label class="opt">End school early <input type="time" id="endAt"></label>
       <p class="adjust-preview" id="adjustPreview" role="status" aria-live="polite"></p>
@@ -193,9 +193,9 @@
     <div class="days" id="days"></div>
     <p class="hint" id="dayhint"></p>
     <label class="opt pass-default">Usual passing time (minutes) <input type="number" id="passMin" min="0" max="30" step="1"></label>
-    <p class="hint">New passing times use this duration.</p>
+    <p class="hint">Used for new passing periods.</p>
     <p class="label section-title">Periods</p>
-    <p class="hint">Change names, times, and details here or tap a name on the schedule.</p>
+    <p class="hint">Tap a name to rename it; edit times and details here.</p>
     <div id="rows"></div>
     <p class="err" id="err" role="status" aria-live="polite"></p>
     <p class="editor-preview" id="editorPreview" aria-live="polite"></p>
@@ -312,13 +312,22 @@
 
     <div class="panel changelog-panel" data-tab="changelog" hidden>
       <p class="changelog-version">Current version <strong id="version"></strong></p>
-      <h3>What's new</h3>
-      <ul class="changelog-list">
-        <li>Rename periods from the schedule list or Schedules settings.</li>
-        <li>Spot the current or nearly finished period, with distinct styling for Free, Study Hall, and Homeroom.</li>
-        <li>Change today's schedule for one day without opening full Settings.</li>
-        <li>Use a more compact Before School view on mobile and clearer advanced scheduling controls.</li>
-      </ul>
+      <section class="changelog-release" aria-labelledby="release-223">
+        <h3 id="release-223">v2.0.23</h3>
+        <ul class="changelog-list">
+          <li>Make the active period easier to spot with a high-contrast highlight and progress cue.</li>
+          <li>Compact the Before School countdown on mobile while keeping the in-class countdown prominent.</li>
+          <li>Strengthen special-period styling and tuck schedule groups into Advanced scheduling.</li>
+        </ul>
+      </section>
+      <details class="previous-release">
+        <summary>Previous release: v2.0.22</summary>
+        <ul class="changelog-list">
+          <li>Rename periods from the schedule list or Schedules settings.</li>
+          <li>Change today's schedule for one day without opening full Settings.</li>
+          <li>Highlight current and nearly finished periods, with distinct styling for Free, Study Hall, and Homeroom.</li>
+        </ul>
+      </details>
     </div>
 
     <div class="foot">

@@ -83,7 +83,7 @@ const SIZES = { small: "14px", normal: "16px", large: "19px" };
 const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ALERT_MINS = [1, 2, 3, 5, 10];
 const KEY = "schoolSchedule.v3";
-const VERSION = "2.0.22";
+const VERSION = "2.0.23";
 const RING = 552.92;
 const Core = window.SchoolScheduleCore;
 const FIRST_RUN = (() => {
@@ -877,10 +877,22 @@ function renderList(daySchedules, d, now) {
         mk("span", { className: "t", textContent: span(p.start, p.end) }));
       if (isCurrent) {
         li.setAttribute("aria-current", "true");
+        li.dataset.start = String(p.start);
+        li.dataset.end = String(p.end);
         li.style.setProperty("--progress", Math.round((now - p.start) / (p.end - p.start) * 100) + "%");
       }
       ol.append(li);
     });
+  });
+}
+
+function updateCurrentPeriodProgress(now) {
+  $("list").querySelectorAll("li.period-row.cur").forEach(row => {
+    const start = Number(row.dataset.start), end = Number(row.dataset.end);
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      const progress = Math.max(0, Math.min(100, Math.round((now - start) / (end - start) * 100)));
+      row.style.setProperty("--progress", progress + "%");
+    }
   });
 }
 
@@ -1310,6 +1322,7 @@ function tick() {
     renderList(listSchedules, d, now);
     lastKey = key; lastListKey = listKey;
   }
+  updateCurrentPeriodProgress(now);
   firstTick = false;
 }
 

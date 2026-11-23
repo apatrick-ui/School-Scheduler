@@ -485,9 +485,11 @@ input[type=color]{width:44px; height:34px; padding:0; border:1px solid var(--lin
 .opt{display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); min-height:42px}
 .opt select,.opt .select-control,.opt input:not([type=checkbox]){width:min(240px,48%); flex:none}
 input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi); cursor:pointer}
-.today,.rotation-settings,.advanced-scheduling{margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
-.today summary,.rotation-settings summary,.period-details summary,.advanced-actions summary,.advanced-options summary,.week-preview summary{cursor:pointer; color:var(--ink); font-weight:700; padding:4px 0}
-.today[open] summary,.rotation-settings[open] summary,.period-details[open] summary,.advanced-actions[open] summary,.advanced-options[open] summary,.week-preview[open] summary{margin-bottom:8px}
+.today,.rotation-settings,.advanced-scheduling,.group-settings{margin-top:18px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--rm); background:color-mix(in srgb,var(--ink) 2%,var(--card))}
+.today summary,.rotation-settings summary,.period-details summary,.advanced-actions summary,.advanced-options summary,.week-preview summary,.group-settings summary{cursor:pointer; color:var(--ink); font-weight:700; padding:4px 0}
+.today[open] summary,.rotation-settings[open] summary,.period-details[open] summary,.advanced-actions[open] summary,.advanced-options[open] summary,.week-preview[open] summary,.group-settings[open]>summary{margin-bottom:8px}
+.group-settings{margin-top:10px}
+.group-settings .set-manager{margin:0}
 .period-details{grid-area:m; min-width:0}
 .period-details[open]{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .period-details summary{grid-column:1/-1}
@@ -504,6 +506,9 @@ input[type=checkbox]{width:18px; height:18px; flex:none; accent-color:var(--hi);
 .changelog-version strong{color:var(--ink);font-variant-numeric:tabular-nums}
 .changelog-panel h3{margin:0 0 8px;font-size:1rem}
 .changelog-list{display:grid;gap:9px;margin:0;padding-left:22px;max-width:70ch;line-height:1.5}
+.previous-release{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+.previous-release summary{cursor:pointer;color:var(--ink);font-weight:700}
+.previous-release[open] .changelog-list{margin-top:10px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid color-mix(in srgb,var(--bar) 50%,transparent); outline-offset:2px}
 button:not(:disabled){transition:transform .12s ease, background .2s, color .2s, border-color .2s, box-shadow .2s}
 button:not(:disabled):not(.alt):not(.x):not(.icon):not(.header-control):not(.today-quick):not(.period-name-edit):not(.stab):not(.tab):not(.theme-card):not(.sidebar-link):not(.sidebar-close):not(.menu-btn):not(.danger):not([data-mode]):hover{
@@ -947,19 +952,24 @@ li{padding:10px 14px}
 .period-name-edit:focus-visible{outline:2px solid var(--bar);outline-offset:3px}
 .period-name-input{width:min(100%,280px);min-height:36px;padding:5px 8px;font:inherit;font-weight:700}
 li.period-row.cur{
-  border:2px solid color-mix(in srgb,var(--bar) 78%,var(--hi));padding:12px 14px;
-  background:color-mix(in srgb,var(--hi) 76%,var(--card));
-  box-shadow:inset 4px 0 0 var(--bar),0 0 0 3px color-mix(in srgb,var(--hi) 28%,transparent),0 10px 24px -16px color-mix(in srgb,var(--bar) 65%,transparent);
+  border:2px solid color-mix(in srgb,var(--hi-ink) 52%,var(--hi));padding:12px 14px;
+  background:var(--hi);color:var(--hi-ink);
+  box-shadow:inset 5px 0 0 var(--hi-ink),0 0 0 3px color-mix(in srgb,var(--hi) 32%,transparent),0 10px 24px -16px color-mix(in srgb,var(--bar) 65%,transparent);
+}
+li.period-row.cur::after{
+  content:"";position:absolute;left:12px;right:12px;bottom:5px;height:4px;border-radius:99px;pointer-events:none;
+  background:linear-gradient(90deg,var(--hi-ink) var(--progress,0%),color-mix(in srgb,var(--hi-ink) 18%,var(--hi)) var(--progress,0%));
 }
 .current-badge{
-  flex:none;align-self:center;padding:3px 7px;border-radius:999px;background:var(--bar);color:var(--card);
-  font-size:.62rem;font-weight:850;letter-spacing:.08em;line-height:1.2;
+  flex:none;align-self:center;padding:4px 8px;border-radius:999px;background:var(--hi-ink);color:var(--hi);
+  font-size:.66rem;font-weight:850;letter-spacing:.08em;line-height:1.2;
 }
-li.period-row.ending-soon{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 17%,var(--card))}
+li.period-row.ending-soon{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 27%,var(--card));box-shadow:inset 5px 0 0 var(--warn),0 0 0 3px color-mix(in srgb,var(--warn) 22%,transparent)}
 li.period-row.ending-soon .current-badge,li.pass.ending-soon .current-badge{background:var(--warn);color:var(--on-warn)}
-li.special-free:not(.cur){border-left:3px solid var(--go);background:color-mix(in srgb,var(--go) 11%,var(--card))}
-li.special-study-hall:not(.cur){border-left:3px solid var(--hi);background:color-mix(in srgb,var(--hi) 13%,var(--card))}
-li.special-homeroom:not(.cur){border-left:3px solid var(--bar);background:color-mix(in srgb,var(--bar) 8%,var(--card))}
+li.period-row.ending-soon::after{background:linear-gradient(90deg,var(--on-warn) var(--progress,0%),color-mix(in srgb,var(--warn) 38%,var(--card)) var(--progress,0%))}
+li.special-free:not(.cur){border-left:4px solid var(--go);background:color-mix(in srgb,var(--go) 17%,var(--card))}
+li.special-study-hall:not(.cur){border-left:4px solid var(--hi);background:color-mix(in srgb,var(--hi) 18%,var(--card))}
+li.special-homeroom:not(.cur){border-left:4px solid var(--bar);background:color-mix(in srgb,var(--bar) 13%,var(--card))}
 .day:has(input:focus-visible),.theme-card:focus-visible,.appearance button:focus-visible{
   outline:3px solid color-mix(in srgb,var(--bar) 58%,transparent);outline-offset:3px;position:relative;z-index:1;
 }
@@ -975,7 +985,20 @@ li.special-homeroom:not(.cur){border-left:3px solid var(--bar);background:color-
   .today-quick{flex-basis:36px;width:36px;height:36px;min-height:36px;padding:0}
   .today-quick span{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .quick-time-grid{grid-template-columns:1fr}
-  .hero[data-mode="before"] .ringwrap{width:min(220px,70vw)}
+  .hero[data-mode="before"]{padding:14px 12px 12px}
+  .hero[data-mode="before"] .now{font-size:clamp(1.15rem,4.7vw,1.45rem)}
+  .hero[data-mode="before"] .ring-pair{margin:4px auto 0}
+  .hero[data-mode="before"] .ring-panel{padding:0}
+  .hero[data-mode="before"] .ring-panel-head{display:flex;justify-content:center;align-items:center;gap:7px;min-height:0;margin:0 0 4px}
+  .hero[data-mode="before"] .ring-panel-head strong{max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.7rem}
+  .hero[data-mode="before"] .ring-panel-head select{width:min(66%,220px);min-height:32px;padding-block:4px}
+  .hero[data-mode="before"] .ringwrap{width:min(170px,54vw)}
+  .hero[data-mode="before"] .count{font-size:clamp(1.8rem,10vw,2.4rem)}
+  .hero[data-mode="before"] .unit{margin-top:3px;font-size:.72rem}
+  .hero[data-mode="before"] .pct{margin-top:4px;font-size:.76rem}
+  .hero[data-mode="before"] .sub{margin-top:4px;font-size:.84rem}
+  .hero[data-mode="before"] .det{font-size:.84rem}
+  .hero[data-mode="before"]+.stats{margin-top:6px}
   .hero[data-mode="before"]+.stats .stat{
     min-height:80px;padding:11px 14px;border-color:color-mix(in srgb,var(--line) 75%,transparent);
     border-top:1px solid var(--line);background:color-mix(in srgb,var(--card) 94%,var(--bg));box-shadow:none;

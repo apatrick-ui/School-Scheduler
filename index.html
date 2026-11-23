@@ -9,7 +9,7 @@
 <meta property="og:title" content="School Schedule">
 <meta property="og:description" content="How much school is left today?">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="styles.css?v=2.0.20">
+<link rel="stylesheet" href="styles.css?v=2.0.22">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="shortcut icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -32,6 +32,10 @@
         <svg class="fullscreen-exit-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l6 6M9 4v5H4M21 3l-6 6M20 9h-5V4M3 21l6-6M9 20v-5H4M21 21l-6-6M20 15h-5v5"/></svg>
       </button>
       <span class="daterow"><span id="date"></span><span class="dnum" id="dnum"></span><span class="pill" id="pill" hidden></span></span>
+      <button class="today-quick" id="todayQuickBtn" type="button" aria-label="Change today’s schedule">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>
+        <span>Today is different</span>
+      </button>
     </div>
     <span id="clock" class="top-clock"></span>
   </div>
@@ -137,23 +141,26 @@
       <button class="stab" id="tab-alerts" type="button" data-tab="alerts" role="tab" aria-selected="false">Reminders</button>
       <button class="stab" id="tab-feedback" type="button" data-tab="feedback" role="tab" aria-selected="false">Feedback</button>
       <button class="stab" id="tab-data" type="button" data-tab="data" role="tab" aria-selected="false">Data</button>
+      <button class="stab" id="tab-changelog" type="button" data-tab="changelog" role="tab" aria-selected="false">Changelog</button>
     </div>
 
     <div class="panel" data-tab="schedules">
-    <p class="hint">Keep different weeks together, like yours and a friend’s. You can compare two groups on the home screen.</p>
+    <p class="hint">Set up groups, schedules, and the days they run.</p>
     <div class="set-manager">
       <p class="label">Schedule groups</p>
       <div class="tabs set-tabs" id="setTabs" role="group" aria-label="Choose a schedule group to edit"></div>
-      <p class="hint">Keep separate weeks together. Copy a group to start from schedules you already have.</p>
+      <p class="hint">Groups hold separate weekly plans.</p>
       <label class="field"><span class="label">Group name</span><input type="text" id="setName" maxlength="40"></label>
       <details class="advanced-actions group-options">
-        <summary>More group options</summary>
+        <summary>Group actions</summary>
         <div class="btns"><button class="alt" id="deleteSet" type="button">Delete group</button></div>
       </details>
     </div>
+    <details class="advanced-scheduling">
+      <summary>Advanced scheduling</summary>
     <details class="rotation-settings">
       <summary>Alternating weeks</summary>
-      <p class="hint">For schools with two weekly schedules: choose the group for Week A and Week B. Week B follows Week A, then the cycle repeats from the selected Monday.</p>
+      <p class="hint">Choose two groups and the Monday Week A starts; they alternate weekly.</p>
       <label class="opt">Alternate schedule groups weekly <input type="checkbox" id="rotationOn"></label>
       <div id="rotationControls" hidden>
         <label class="opt">Week A schedule group <select id="rotationA"></select></label>
@@ -164,47 +171,49 @@
     </details>
     <details class="week-preview">
       <summary>Preview the week</summary>
-      <p class="hint">See which schedules are assigned to each day.</p>
+      <p class="hint">See schedules by day.</p>
       <div class="week-overview" id="weekOverview" aria-label="Weekly schedule overview"></div>
     </details>
+    <details class="today">
+      <summary>Change a specific date</summary>
+      <p class="hint">Set a holiday or adjust one day.</p>
+      <label class="opt">Date <input type="date" id="exceptionDate"></label>
+      <label class="opt">Schedule for this date <select id="today"></select></label>
+      <p class="hint">Use the normal weekly schedule to remove a schedule override.</p>
+      <label class="opt">Move all class times (minutes) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
+      <label class="opt">End school early <input type="time" id="endAt"></label>
+      <p class="adjust-preview" id="adjustPreview" role="status" aria-live="polite"></p>
+      <div class="btns"><button id="applyToday" type="button">Save date change</button><button class="alt" id="clearToday" type="button">Remove date change</button></div>
+    </details>
+    </details>
+    <p class="label section-title">Schedule</p>
     <div class="tabs" id="tabs"></div>
     <label class="field"><span class="label">Schedule name</span><input type="text" id="sname" maxlength="40"></label>
     <p class="label section-title">Days this schedule runs</p>
     <div class="days" id="days"></div>
     <p class="hint" id="dayhint"></p>
     <label class="opt pass-default">Usual passing time (minutes) <input type="number" id="passMin" min="0" max="30" step="1"></label>
-    <p class="hint">Used when you add a class. You can change each passing period’s times below.</p>
-    <p class="label section-title">Class times</p>
+    <p class="hint">New passing times use this duration.</p>
+    <p class="label section-title">Periods</p>
+    <p class="hint">Change names, times, and details here or tap a name on the schedule.</p>
     <div id="rows"></div>
     <p class="err" id="err" role="status" aria-live="polite"></p>
     <p class="editor-preview" id="editorPreview" aria-live="polite"></p>
     <div class="btns">
-      <button class="alt" id="addRow" type="button">Add class</button>
+      <button class="alt" id="addRow" type="button">Add period</button>
       <button class="alt" id="addPass" type="button">Add passing time</button>
     </div>
     <p class="hint" id="gapMsg"></p>
 
     <details class="advanced-actions">
-      <summary>More schedule options</summary>
-      <p class="hint">Fill open time between classes or remove this schedule.</p>
+      <summary>Schedule actions</summary>
+      <p class="hint">Fill gaps or remove this schedule.</p>
       <div class="btns">
         <button class="alt" id="fillGaps" type="button">Fill gaps with passing time</button>
         <button class="alt" id="del" type="button">Delete this schedule</button>
       </div>
     </details>
 
-    <details class="today">
-      <summary>Change a specific date</summary>
-      <p class="hint">Set a holiday, alternate schedule, or adjusted day without changing your regular weekly schedule.</p>
-      <label class="opt">Date <input type="date" id="exceptionDate"></label>
-      <label class="opt">Schedule for this date <select id="today"></select></label>
-      <p class="hint">“Use the normal weekly schedule” follows the weekday and, when enabled, the alternating-week schedule.</p>
-      <label class="opt">Move all class times (minutes) <input type="number" id="shift" min="-180" max="300" step="5" value="0"></label>
-      <label class="opt">End school early <input type="time" id="endAt"></label>
-      <p class="hint">Choose “No school” for a day off, or select a different schedule and optional time changes.</p>
-      <p class="adjust-preview" id="adjustPreview" role="status" aria-live="polite"></p>
-      <div class="btns"><button id="applyToday" type="button">Save date exception</button><button class="alt" id="clearToday" type="button">Remove date exception</button></div>
-    </details>
     </div>
 
     <div class="panel" data-tab="theme" hidden>
@@ -301,9 +310,40 @@
       </form>
     </div>
 
+    <div class="panel changelog-panel" data-tab="changelog" hidden>
+      <p class="changelog-version">Current version <strong id="version"></strong></p>
+      <h3>What's new</h3>
+      <ul class="changelog-list">
+        <li>Rename periods from the schedule list or Schedules settings.</li>
+        <li>Spot the current or nearly finished period, with distinct styling for Free, Study Hall, and Homeroom.</li>
+        <li>Change today's schedule for one day without opening full Settings.</li>
+        <li>Use a more compact Before School view on mobile and clearer advanced scheduling controls.</li>
+      </ul>
+    </div>
+
     <div class="foot">
       <button class="alt" id="reset" type="button">Reset all schedules and settings</button>
       <button id="done2" type="button">Done</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="quickExceptionDlg" aria-labelledby="quickExceptionTitle">
+  <div class="dhead">
+    <div><h2 id="quickExceptionTitle">Change today’s schedule</h2><p class="hint" id="quickExceptionDate"></p></div>
+    <button class="alt" id="quickExceptionClose" type="button">Close</button>
+  </div>
+  <div class="dbody">
+    <p class="hint">This change applies to today only.</p>
+    <label class="field"><span class="label">Schedule for today</span><select id="quickToday" aria-label="Schedule for today"></select></label>
+    <div class="quick-time-grid">
+      <label class="field"><span class="label">Shift class times (minutes)</span><input type="number" id="quickShift" min="-180" max="300" step="5" value="0"></label>
+      <label class="field"><span class="label">End school early</span><input type="time" id="quickEndAt"></label>
+    </div>
+    <p class="quick-exception-status" id="quickExceptionStatus" role="status" aria-live="polite"></p>
+    <div class="btns">
+      <button id="quickExceptionSave" type="button">Save today’s change</button>
+      <button class="alt" id="quickExceptionClear" type="button">Use normal schedule</button>
     </div>
   </div>
 </dialog>

@@ -1,8 +1,8 @@
-const CACHE_NAME = "school-schedule-v7";
+const CACHE_NAME = "school-schedule-v9";
 const APP_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=2.0.20",
+  "./styles.css?v=2.0.22",
   "./app.js",
   "./schedule-core.js",
   "./feedback-config.js",

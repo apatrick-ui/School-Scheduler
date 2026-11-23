@@ -83,7 +83,7 @@ const SIZES = { small: "14px", normal: "16px", large: "19px" };
 const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ALERT_MINS = [1, 2, 3, 5, 10];
 const KEY = "schoolSchedule.v3";
-const VERSION = "2.0.14";
+const VERSION = "2.0.22";
 const RING = 552.92;
 const Core = window.SchoolScheduleCore;
 const FIRST_RUN = (() => {
@@ -771,6 +771,54 @@ addEventListener("pointerdown", () => audio(), { once: true });
 addEventListener("keydown", () => audio(), { once: true });
 
 // ---- Today's schedule list and weekly comparison ----
+const ENDING_SOON_SECONDS = 5 * 60;
+function specialPeriodClass(name) {
+  const normalized = name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  if (normalized === "free" || normalized === "free period") return "special-free";
+  if (normalized === "study hall") return "special-study-hall";
+  if (normalized === "homeroom") return "special-homeroom";
+  return "";
+}
+function periodNameControl(name, scheduleId, sourcePeriod) {
+  const button = mk("button", { type: "button", className: "nm period-name-edit", textContent: name });
+  button.setAttribute("aria-label", "Rename " + name);
+  button.title = "Tap to rename this period";
+  button.onclick = () => {
+    const input = mk("input", { type: "text", className: "period-name-input", value: name, maxLength: 40 });
+    input.setAttribute("aria-label", "New name for " + name);
+    let cancelled = false;
+    const restore = () => {
+      if (input.isConnected) input.replaceWith(periodNameControl(name, scheduleId, sourcePeriod));
+    };
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") { event.preventDefault(); input.blur(); }
+      else if (event.key === "Escape") { event.preventDefault(); cancelled = true; input.blur(); }
+    });
+    input.addEventListener("blur", () => {
+      if (cancelled) { restore(); return; }
+      const nextName = input.value.trim().slice(0, 40);
+      if (!nextName || nextName === name) { restore(); return; }
+      const schedule = settings.schedules.find(item => item.id === scheduleId);
+      const period = schedule && schedule.periods.find(item =>
+        toSec(item.start) === sourcePeriod.start && toSec(item.end) === sourcePeriod.end &&
+        (item.kind === "passing" ? "passing" : "class") === sourcePeriod.kind);
+      if (!period) {
+        $("saveStatus").textContent = "Couldn’t find that period to rename. Refresh the page and try again.";
+        $("saveStatus").hidden = false;
+        restore();
+        return;
+      }
+      period.name = nextName;
+      save();
+      lastKey = ""; lastListKey = ""; comparisonRenderKey = "";
+      tick();
+    });
+    button.replaceWith(input);
+    input.focus();
+    input.select();
+  };
+  return button;
+}
 function renderList(daySchedules, d, now) {
   // Render every schedule assigned to today as its own clearly labeled group.
   // The ring can still preview one schedule; the day list should not hide the
@@ -803,19 +851,34 @@ function renderList(daySchedules, d, now) {
           mk("span", { className: "t", textContent: span(prev.end, p.start) })));
       }
       if (p.kind === "passing") {
-        if (settings.showPassing) ol.append(mk("li", { className: "pass" + (i === current ? " cur" : now >= p.end ? " done" : "") },
-          mk("span", { textContent: p.name + " (" + Math.round((p.end - p.start) / 60) + " min)" }),
-          mk("span", { className: "t", textContent: span(p.start, p.end) })));
+        if (settings.showPassing) {
+          const isCurrent = i === current, endingSoon = isCurrent && p.end > now && p.end - now <= ENDING_SOON_SECONDS;
+          const row = mk("li", { className: "pass" + (isCurrent ? " cur" : now >= p.end ? " done" : "") + (endingSoon ? " ending-soon" : "") },
+            mk("span", { textContent: p.name + " (" + Math.round((p.end - p.start) / 60) + " min)" }),
+            ...(isCurrent ? [mk("span", { className: "current-badge", textContent: "NOW" })] : []),
+            mk("span", { className: "t", textContent: span(p.start, p.end) }));
+          if (isCurrent) row.setAttribute("aria-current", "true");
+          ol.append(row);
+        }
         return;
       }
-      const left = mk("span", {}, mk("span", { className: "nm", textContent: p.name }));
+      const sourcePeriod = checked.list[i];
+      const left = mk("span", { className: "period-label" }, periodNameControl(p.name, schedule.id, sourcePeriod));
       const description = detail(p);
       if (description) left.append(mk("span", { className: "dt", textContent: description }));
-      const cls = [i === current ? "cur" : now >= p.end ? "done" : "", !description ? "no-detail" : ""].filter(Boolean).join(" ");
+      const isCurrent = i === current, endingSoon = isCurrent && p.end > now && p.end - now <= ENDING_SOON_SECONDS;
+      const cls = [
+        "period-row", specialPeriodClass(p.name), isCurrent ? "cur" : now >= p.end ? "done" : "",
+        endingSoon ? "ending-soon" : "", !description ? "no-detail" : ""
+      ].filter(Boolean).join(" ");
       const li = mk("li", { className: cls },
         left,
+        ...(isCurrent ? [mk("span", { className: "current-badge", textContent: "NOW" })] : []),
         mk("span", { className: "t", textContent: span(p.start, p.end) }));
-      if (i === current) li.style.setProperty("--progress", Math.round((now - p.start) / (p.end - p.start) * 100) + "%");
+      if (isCurrent) {
+        li.setAttribute("aria-current", "true");
+        li.style.setProperty("--progress", Math.round((now - p.start) / (p.end - p.start) * 100) + "%");
+      }
       ol.append(li);
     });
   });
@@ -1235,7 +1298,11 @@ function tick() {
       const periods = checked.ok ? applyAdjust(checked.list, d).list : [];
       const current = periods.findIndex(period => now >= period.start && now < period.end);
       const classes = periods.filter(period => period.kind !== "passing");
+      const currentPeriod = current >= 0 ? periods[current] : null;
+      const endingSoon = Boolean(currentPeriod && currentPeriod.end > now &&
+        currentPeriod.end - now <= ENDING_SOON_SECONDS);
       return [schedule.id, schedule.name, schedule.periods, current,
+        endingSoon,
         classes.length ? now < classes[0].start : false,
         classes.length ? now >= classes[classes.length - 1].end : false];
     })]);
@@ -1353,11 +1420,8 @@ function updateRotation() {
 for (const id of ["rotationOn", "rotationA", "rotationB", "rotationAnchor"])
   $(id).addEventListener("change", updateRotation);
 
-function buildToday() {
-  const dateInput = $("exceptionDate");
-  if (!Core.isValidDateKey(dateInput.value)) dateInput.value = dayKey(new Date());
-  const selectedDate = dateFromKey(dateInput.value);
-  const sel = $("today"); sel.textContent = "";
+function fillExceptionScheduleSelect(sel, selectedDate) {
+  sel.textContent = "";
   sel.append(mk("option", { value: "", textContent: "Use the normal weekly schedule" }));
   sel.append(mk("option", { value: "__no_school", textContent: "No school" }));
   settings.sets.forEach(set => schedulesInSet(set.id).forEach(schedule => {
@@ -1365,12 +1429,39 @@ function buildToday() {
   }));
   const exception = dateExceptionFor(selectedDate);
   sel.value = exception ? exception.noSchool ? "__no_school" : exception.scheduleId || "" : "";
+  syncCustomSelect(sel);
+  return exception;
+}
+function buildToday() {
+  const dateInput = $("exceptionDate");
+  if (!Core.isValidDateKey(dateInput.value)) dateInput.value = dayKey(new Date());
+  const selectedDate = dateFromKey(dateInput.value);
+  const exception = fillExceptionScheduleSelect($("today"), selectedDate);
   $("shift").value = exception ? exception.shift : 0;
   $("endAt").value = exception ? exception.endAt : "";
   $("shift").disabled = Boolean(exception && exception.noSchool);
   $("endAt").disabled = Boolean(exception && exception.noSchool);
   syncAllCustomSelects();
   renderAdjustmentPreview();
+}
+let quickExceptionDateKey = "";
+function buildQuickException() {
+  const date = new Date();
+  quickExceptionDateKey = dayKey(date);
+  const exception = fillExceptionScheduleSelect($("quickToday"), date);
+  $("quickExceptionDate").textContent = "For " + date.toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric"
+  });
+  $("quickShift").value = exception ? exception.shift : 0;
+  $("quickEndAt").value = exception ? exception.endAt : "";
+  $("quickExceptionClear").disabled = !exception;
+  updateQuickExceptionState();
+  $("quickExceptionStatus").textContent = "";
+}
+function updateQuickExceptionState() {
+  const noSchool = $("quickToday").value === "__no_school";
+  $("quickShift").disabled = noSchool;
+  $("quickEndAt").disabled = noSchool;
 }
 function renderAdjustmentPreview() {
   const dateKey = $("exceptionDate").value;
@@ -1462,7 +1553,7 @@ function addRow(p) {
   // Construct each period with the same field order as readRows() below.
   // Labels are attached for assistive technology even when placeholders exist.
   const kind = p.kind === "passing" ? "passing" : "class", pass = kind === "passing";
-  const n = mk("input", { type: "text", value: p.name, placeholder: pass ? "Passing time" : "Name", className: "f-n", maxLength: 40 });
+  const n = mk("input", { type: "text", value: p.name, placeholder: pass ? "Passing time" : "Period name", className: "f-n", maxLength: 40 });
   const startInput = mk("input", { type: "time", value: p.start });
   const endInput = mk("input", { type: "time", value: p.end });
   const s = mk("label", { className: "time-field f-s" }, mk("span", { textContent: "Start" }), startInput);
@@ -1470,7 +1561,7 @@ function addRow(p) {
   const t = mk("input", { type: "text", value: p.teacher || "", placeholder: "Teacher (optional)", className: "f-t", maxLength: 40 });
   const r = mk("input", { type: "text", value: p.room || "", placeholder: "Room (optional)", className: "f-r", maxLength: 20 });
   const o = mk("input", { type: "text", value: p.note || "", placeholder: pass ? "Note (optional)" : "Note, e.g. “Welcome to school”", className: "f-o", maxLength: 120 });
-  n.setAttribute("aria-label", pass ? "Passing period name" : "Period name");
+  n.setAttribute("aria-label", pass ? "Passing period name" : "Period or activity name");
   startInput.setAttribute("aria-label", "Start time");
   endInput.setAttribute("aria-label", "End time");
   t.setAttribute("aria-label", "Teacher");
@@ -1585,6 +1676,19 @@ $("today").onchange = () => {
   syncAllCustomSelects();
 };
 $("shift").oninput = $("endAt").oninput = renderAdjustmentPreview;
+function saveDateException(date, selectedId, shiftValue, endAtValue) {
+  if (!Core.isValidDateKey(date)) return false;
+  const noSchool = selectedId === "__no_school";
+  const shift = noSchool ? 0 : Number.isFinite(shiftValue) ? Math.max(-180, Math.min(300, Math.round(shiftValue))) : 0;
+  const endAt = noSchool || toSec(endAtValue) == null ? "" : endAtValue;
+  settings.exceptions = settings.exceptions.filter(exception => exception.date !== date);
+  if (noSchool || selectedId || shift || endAt) {
+    settings.exceptions.push({ date, noSchool, scheduleId: noSchool ? "" : selectedId, shift, endAt });
+    settings.exceptions.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  save(); buildToday(); buildDashboardControls(); lastKey = ""; lastListKey = ""; comparisonRenderKey = ""; tick();
+  return true;
+}
 $("applyToday").onclick = () => {
   const date = $("exceptionDate").value;
   if (!Core.isValidDateKey(date)) {
@@ -1592,22 +1696,30 @@ $("applyToday").onclick = () => {
     $("applyToday").disabled = true;
     return;
   }
-  const selectedId = $("today").value;
-  const noSchool = selectedId === "__no_school";
-  const shiftValue = Number($("shift").value);
-  const shift = noSchool ? 0 : Number.isFinite(shiftValue) ? Math.max(-180, Math.min(300, Math.round(shiftValue))) : 0;
-  const endAt = noSchool || toSec($("endAt").value) == null ? "" : $("endAt").value;
-  settings.exceptions = settings.exceptions.filter(exception => exception.date !== date);
-  if (noSchool || selectedId || shift || endAt) {
-    settings.exceptions.push({ date, noSchool, scheduleId: noSchool ? "" : selectedId, shift, endAt });
-    settings.exceptions.sort((a, b) => a.date.localeCompare(b.date));
-  }
-  save(); buildToday(); buildDashboardControls(); lastKey = ""; comparisonRenderKey = ""; tick();
+  saveDateException(date, $("today").value, Number($("shift").value), $("endAt").value);
 };
-$("clearToday").onclick = () => {
-  const date = $("exceptionDate").value;
-  settings.exceptions = settings.exceptions.filter(exception => exception.date !== date);
-  save(); buildToday(); buildDashboardControls(); lastKey = ""; comparisonRenderKey = ""; tick();
+$("clearToday").onclick = () => saveDateException($("exceptionDate").value, "", 0, "");
+const quickExceptionDlg = $("quickExceptionDlg");
+$("todayQuickBtn").onclick = () => { buildQuickException(); quickExceptionDlg.showModal(); };
+$("quickExceptionClose").onclick = () => quickExceptionDlg.close();
+quickExceptionDlg.addEventListener("click", event => {
+  if (event.target === quickExceptionDlg) quickExceptionDlg.close();
+});
+$("quickToday").onchange = updateQuickExceptionState;
+function quickExceptionDateIsCurrent() {
+  if (quickExceptionDateKey === dayKey(new Date())) return true;
+  buildQuickException();
+  $("quickExceptionStatus").textContent = "The date changed. Review today’s change and save again.";
+  return false;
+}
+$("quickExceptionSave").onclick = () => {
+  if (!quickExceptionDateIsCurrent()) return;
+  if (saveDateException(quickExceptionDateKey, $("quickToday").value, Number($("quickShift").value), $("quickEndAt").value))
+    quickExceptionDlg.close();
+};
+$("quickExceptionClear").onclick = () => {
+  if (!quickExceptionDateIsCurrent()) return;
+  if (saveDateException(quickExceptionDateKey, "", 0, "")) quickExceptionDlg.close();
 };
 const LAST_MIN = 23 * 3600 + 59 * 60;
 function endOfDay(rows) { // Latest ending time, or null if the editor has no usable times.
